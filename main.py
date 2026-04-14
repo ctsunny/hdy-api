@@ -32,6 +32,9 @@ from models import (
     LoginRequest,
     NotifyTestRequest,
     PaginatedChanges,
+    PaginatedProducts,
+    SiteAccount,
+    SiteAccountCreate,
     SiteLoginRequest,
     TokenResponse,
 )
@@ -165,7 +168,7 @@ async def site_login(req: SiteLoginRequest) -> JSONResponse:
 
             if r.status_code == 200 and jwt_token:
                 await database.update_config(login_token=jwt_token)
-                return JSONResponse({"status": "ok", "message": "登录成功，JWT 已保存"})
+                return JSONResponse({"status": "ok", "message": "登录成功，JWT 已保存", "jwt_token": jwt_token})
             else:
                 msg = body.get("msg") or body.get("message") or f"HTTP {r.status_code}"
                 return JSONResponse(
@@ -174,6 +177,64 @@ async def site_login(req: SiteLoginRequest) -> JSONResponse:
                 )
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Site accounts management
+# ---------------------------------------------------------------------------
+
+@app.get(f"{BASE_PATH}/api/site_accounts", dependencies=[Depends(require_auth)])
+async def list_site_accounts() -> JSONResponse:
+    accounts = await database.get_site_accounts()
+    return JSONResponse(accounts)
+
+
+@app.post(f"{BASE_PATH}/api/site_accounts", dependencies=[Depends(require_auth)])
+async def create_site_account(req: SiteAccountCreate) -> JSONResponse:
+    """Login to szhdy.com and save the account with its JWT token."""
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            r = await client.post(
+                "https://www.szhdy.com/zjmf_api_login",
+                json={"username": req.username, "password": req.api_key},
+                headers={"Content-Type": "application/json"},
+            )
+            body: dict = {}
+            try:
+                body = r.json()
+            except Exception:
+                pass
+
+            body_data = body.get("data")
+            jwt_token: str = (
+                body_data.get("jwt", "") if isinstance(body_data, dict)
+                else body.get("jwt", "")
+            )
+
+            if r.status_code == 200 and jwt_token:
+                label = req.label or req.username
+                account_id = await database.add_site_account(label, req.username, jwt_token)
+                return JSONResponse({"status": "ok", "id": account_id, "message": "账号已保存"})
+            else:
+                msg = body.get("msg") or body.get("message") or f"HTTP {r.status_code}"
+                return JSONResponse(
+                    {"status": "error", "message": f"登录失败：{msg}"},
+                    status_code=400,
+                )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.delete(f"{BASE_PATH}/api/site_accounts/{{account_id}}", dependencies=[Depends(require_auth)])
+async def remove_site_account(account_id: int) -> JSONResponse:
+    await database.delete_site_account(account_id)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post(f"{BASE_PATH}/api/site_accounts/{{account_id}}/activate", dependencies=[Depends(require_auth)])
+async def activate_site_account(account_id: int) -> JSONResponse:
+    await database.set_active_site_account(account_id)
+    return JSONResponse({"status": "ok", "message": "已切换为当前账号"})
 
 
 # ---------------------------------------------------------------------------
@@ -240,9 +301,40 @@ async def crawler_status() -> CrawlerStatus:
 # ---------------------------------------------------------------------------
 
 @app.get(f"{BASE_PATH}/api/products", dependencies=[Depends(require_auth)])
-async def list_products(limit: int = 200, offset: int = 0) -> JSONResponse:
-    products = await database.get_products(limit=limit, offset=offset)
-    return JSONResponse(products)
+async def list_products(
+    page: int = 1,
+    page_size: int = 20,
+    region: Optional[str] = None,
+    stock_status: Optional[str] = None,
+    billingcycle: Optional[str] = None,
+    price_min: Optional[float] = None,
+    price_max: Optional[float] = None,
+) -> JSONResponse:
+    page_size = min(max(page_size, 1), 200)
+    offset = (page - 1) * page_size
+    products = await database.get_products(
+        limit=page_size,
+        offset=offset,
+        region=region,
+        stock_status=stock_status,
+        billingcycle=billingcycle,
+        price_min=price_min,
+        price_max=price_max,
+    )
+    total = await database.count_products(
+        region=region,
+        stock_status=stock_status,
+        billingcycle=billingcycle,
+        price_min=price_min,
+        price_max=price_max,
+    )
+    return JSONResponse({"total": total, "page": page, "page_size": page_size, "items": products})
+
+
+@app.get(f"{BASE_PATH}/api/products/filter_options", dependencies=[Depends(require_auth)])
+async def product_filter_options() -> JSONResponse:
+    opts = await database.get_product_filter_options()
+    return JSONResponse(opts)
 
 
 @app.get(f"{BASE_PATH}/api/products/{{pid}}/history", dependencies=[Depends(require_auth)])

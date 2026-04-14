@@ -9,6 +9,7 @@ Flow per PID:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import random
 from typing import Any, Optional
@@ -125,7 +126,16 @@ def parse_product_config(body: dict[str, Any], pid: int) -> dict[str, Any]:
 
     data["name"] = product.get("name") or None
 
-    # Price from first billing cycle
+    # Region from product group id / servergroup / gid
+    region = (
+        product.get("servergroup")
+        or product.get("product_group")
+        or product.get("gid")
+        or product.get("group_name")
+    )
+    data["region"] = str(region) if region is not None else None
+
+    # Billing cycles
     cycles = product.get("cycle") or []
     if isinstance(cycles, list) and cycles:
         first_cycle = cycles[0] if isinstance(cycles[0], dict) else {}
@@ -135,6 +145,13 @@ def parse_product_config(body: dict[str, Any], pid: int) -> dict[str, Any]:
     else:
         data["price"] = None
         data["billingcycle"] = None
+        data["billingcycle_zh"] = None
+
+    # Store all cycles as JSON for frontend display/filtering
+    if isinstance(cycles, list):
+        data["cycles_json"] = json.dumps(cycles, ensure_ascii=False)
+    else:
+        data["cycles_json"] = None
 
     # Store full product info
     if product:
@@ -255,6 +272,9 @@ async def _process_pid(
     name = raw_data.get("name")
     price = raw_data.get("price")
     billingcycle = raw_data.get("billingcycle")
+    region = raw_data.get("region")
+    billingcycle_zh = raw_data.get("billingcycle_zh")
+    cycles_json = raw_data.get("cycles_json")
 
     if not name:
         logger.debug("Product pid=%s has no name, skipping", pid)
@@ -268,6 +288,9 @@ async def _process_pid(
         price=price,
         stock_status=stock_status,
         raw_data=raw_data,
+        region=region,
+        billingcycle_zh=billingcycle_zh,
+        cycles_json=cycles_json,
     )
 
     if not changed_fields:
