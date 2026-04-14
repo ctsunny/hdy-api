@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS config (
     interval_ms      INTEGER DEFAULT 1500,
     loop_enabled     INTEGER DEFAULT 0,
     login_cookie     TEXT,
+    login_token      TEXT,
     notify_channels  TEXT DEFAULT '{}'
 );
 
@@ -67,6 +68,11 @@ INSERT OR IGNORE INTO config (id) VALUES (1);
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_DDL)
+        # Migrate: add login_token column if it doesn't exist yet
+        async with db.execute("PRAGMA table_info(config)") as cur:
+            cols = {row[1] async for row in cur}
+        if "login_token" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
         await db.commit()
 
 

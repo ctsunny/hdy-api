@@ -63,9 +63,9 @@ class LoginRequest(BaseModel):
 
 
 class SiteLoginRequest(BaseModel):
-    """Credentials for szhdy.com (to obtain the shopping cookie)."""
+    """Credentials for szhdy.com (username + API key to obtain a JWT token)."""
     username: str
-    password: str
+    api_key: str
 
 
 class TokenResponse(BaseModel):

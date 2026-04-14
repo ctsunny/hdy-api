@@ -2,21 +2,18 @@
 Crawler core — PID traversal + add-to-cart stock detection.
 
 Flow per PID:
-  1. GET /cart?action=configureproduct&pid=<pid>  → scrape product info
-  2. POST add-to-cart API (with login Cookie) → determine stock
+  1. GET /cart/set_config?pid=<pid>  → fetch product info as JSON (requires JWT auth)
+  2. POST /cart/add_to_shop (with JWT Authorization header) → determine stock
   3. Compare with DB snapshot → record changes → notify
 """
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import random
-import re
 from typing import Any, Optional
 
 import httpx
-from bs4 import BeautifulSoup
 
 import database
 import notifier
@@ -62,127 +59,137 @@ def get_status() -> CrawlerStatus:
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
-def _build_headers(cookie: Optional[str]) -> dict[str, str]:
+def _build_headers(token: Optional[str]) -> dict[str, str]:
     h = dict(HEADERS_BASE)
-    if cookie:
-        h["Cookie"] = cookie
+    if token:
+        h["Authorization"] = f"JWT {token}"
     return h
 
 
-async def fetch_product_page(pid: int, cookie: Optional[str]) -> Optional[str]:
-    url = f"{BASE_URL}/cart?action=configureproduct&pid={pid}"
+def _unwrap_body(body: Any) -> dict[str, Any]:
+    """Unwrap .data envelope from HDY API responses, returning the inner dict."""
+    if not isinstance(body, dict):
+        return {}
+    inner = body.get("data")
+    return inner if isinstance(inner, dict) else body
+
+
+def _is_success(body: Any) -> bool:
+    """Check if HDY API response indicates success (status==200 or code==1)."""
+    if not isinstance(body, dict):
+        return False
+    data = _unwrap_body(body)
+    status = data.get("status")
+    if status is not None:
+        return int(status) == 200
+    code = data.get("code")
+    if code is not None:
+        return int(code) in (1, 200)
+    return False
+
+
+async def fetch_product_config(pid: int, token: Optional[str]) -> Optional[dict[str, Any]]:
+    """
+    GET /cart/set_config?pid=<pid>
+    Returns the parsed JSON body, or None on error.
+    """
+    if not token:
+        return None
+    url = f"{BASE_URL}/cart/set_config"
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            r = await client.get(url, headers=_build_headers(cookie))
+            r = await client.get(
+                url,
+                params={"pid": pid},
+                headers=_build_headers(token),
+            )
             if r.status_code == 200:
-                return r.text
+                try:
+                    return r.json()
+                except Exception:
+                    pass
     except Exception as e:
-        logger.warning("fetch_product_page pid=%s error: %s", pid, e)
+        logger.warning("fetch_product_config pid=%s error: %s", pid, e)
     return None
 
 
-async def try_add_to_cart(pid: int, cookie: Optional[str]) -> str:
+def parse_product_config(body: dict[str, Any], pid: int) -> dict[str, Any]:
+    """Parse product info from the /cart/set_config JSON response."""
+    data: dict[str, Any] = {"pid": pid}
+
+    # Unwrap .data if present
+    inner = _unwrap_body(body)
+    product = inner.get("product") if isinstance(inner, dict) else {}
+    if not isinstance(product, dict):
+        product = {}
+
+    data["name"] = product.get("name") or None
+
+    # Price from first billing cycle
+    cycles = product.get("cycle") or []
+    if isinstance(cycles, list) and cycles:
+        first_cycle = cycles[0] if isinstance(cycles[0], dict) else {}
+        data["price"] = first_cycle.get("product_price") or None
+        data["billingcycle"] = first_cycle.get("billingcycle") or None
+        data["billingcycle_zh"] = first_cycle.get("billingcycle_zh") or None
+    else:
+        data["price"] = None
+        data["billingcycle"] = None
+
+    # Store full product info
+    if product:
+        data["product_raw"] = product
+
+    return data
+
+
+async def try_add_to_cart(pid: int, billingcycle: Optional[str], token: Optional[str]) -> str:
     """
-    Attempt to add product to cart.
+    Attempt to add product to cart via /cart/add_to_shop.
     Returns: "in_stock" | "out_of_stock" | "unknown"
     """
-    if not cookie:
+    if not token:
         return "unknown"
 
-    url = f"{BASE_URL}/cart"
-    data = {
-        "action": "add",
-        "id": str(pid),
+    url = f"{BASE_URL}/cart/add_to_shop"
+    payload = {
+        "pid": str(pid),
         "qty": "1",
+        "currencyid": "1",
+        "billingcycle": billingcycle or "",
     }
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             r = await client.post(
                 url,
-                data=data,
-                headers={**_build_headers(cookie), "Content-Type": "application/x-www-form-urlencoded"},
+                json=payload,
+                headers={**_build_headers(token), "Content-Type": "application/json"},
             )
-            text = r.text.lower()
-            resp_json: Optional[dict] = None
+            body: Any = None
             try:
-                resp_json = r.json()
+                body = r.json()
             except Exception:
                 pass
 
-            # Detect out-of-stock responses
-            oos_keywords = ["out of stock", "sold out", "no stock", "库存不足", "缺货", "已售罄", "无货"]
-            if any(kw in text for kw in oos_keywords):
+            if body is not None and _is_success(body):
+                return "in_stock"
+
+            # Check for explicit out-of-stock messages in known message fields
+            oos_keywords = ["out of stock", "sold out", "no stock", "库存不足", "缺货", "已售罄", "无货", "nostock"]
+            if isinstance(body, dict):
+                msg_text = " ".join(
+                    str(body.get(k, "")) for k in ("message", "msg", "info", "error")
+                ).lower()
+                if any(kw in msg_text for kw in oos_keywords):
+                    return "out_of_stock"
+
+            if r.status_code in (200, 201) and body is not None:
                 return "out_of_stock"
-
-            # Successful add-to-cart usually returns a cart object or success flag
-            if resp_json:
-                if resp_json.get("result") == "success" or resp_json.get("cart_item_added"):
-                    return "in_stock"
-                if resp_json.get("result") == "error":
-                    msg = str(resp_json.get("message", "")).lower()
-                    if any(kw in msg for kw in oos_keywords):
-                        return "out_of_stock"
-                    return "unknown"
-
-            if r.status_code in (200, 201):
-                # Heuristic: if page contains cart-item indicators
-                if "cart" in text and ("item" in text or "product" in text):
-                    return "in_stock"
 
             return "unknown"
     except Exception as e:
         logger.warning("try_add_to_cart pid=%s error: %s", pid, e)
         return "unknown"
-
-
-def parse_product(html: str, pid: int) -> dict[str, Any]:
-    """Parse product info from the configure-product page."""
-    soup = BeautifulSoup(html, "lxml")
-    data: dict[str, Any] = {"pid": pid}
-
-    # --- Name ---
-    name_tag = (
-        soup.find("h1", class_=re.compile(r"product.*name|name.*product", re.I))
-        or soup.find("h2", class_=re.compile(r"product.*name|name.*product", re.I))
-        or soup.find("h1")
-        or soup.find("title")
-    )
-    data["name"] = name_tag.get_text(strip=True) if name_tag else None
-
-    # --- Price ---
-    price_tag = (
-        soup.find(class_=re.compile(r"price", re.I))
-        or soup.find("span", string=re.compile(r"\$|¥|￥|HK\$", re.I))
-    )
-    data["price"] = price_tag.get_text(strip=True) if price_tag else None
-
-    # --- Options / specifications ---
-    options: dict[str, str] = {}
-    for select in soup.find_all("select"):
-        label = select.get("name") or select.get("id") or "option"
-        selected = select.find("option", selected=True)
-        if selected:
-            options[label] = selected.get_text(strip=True)
-        else:
-            first = select.find("option")
-            if first:
-                options[label] = first.get_text(strip=True)
-    if options:
-        data["options"] = options
-
-    # --- Stock text (visible on page before add-to-cart) ---
-    stock_tag = soup.find(string=re.compile(r"in stock|out of stock|available|库存|有货|无货|缺货", re.I))
-    if stock_tag:
-        data["stock_text"] = stock_tag.strip()
-
-    # --- All meta tags for extra fields ---
-    for meta in soup.find_all("meta"):
-        prop = meta.get("property") or meta.get("name")
-        content = meta.get("content")
-        if prop and content and prop.startswith("og:"):
-            data[prop] = content
-
-    return data
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +208,7 @@ async def _crawl_loop() -> None:
             end_pid: int = cfg.get("end_pid", 1200)
             interval_ms: int = cfg.get("interval_ms", 1500)
             loop_enabled: bool = cfg.get("loop_enabled", False)
-            cookie: Optional[str] = cfg.get("login_cookie")
+            token: Optional[str] = cfg.get("login_token")
             notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
 
             for pid in range(start_pid, end_pid + 1):
@@ -210,7 +217,7 @@ async def _crawl_loop() -> None:
 
                 state.current_pid = pid
                 try:
-                    await _process_pid(pid, cookie, notify_channels)
+                    await _process_pid(pid, token, notify_channels)
                 except Exception as e:
                     logger.error("Error processing pid=%s: %s", pid, e)
 
@@ -232,19 +239,28 @@ async def _crawl_loop() -> None:
 
 async def _process_pid(
     pid: int,
-    cookie: Optional[str],
+    token: Optional[str],
     notify_channels: dict[str, Any],
 ) -> None:
-    html = await fetch_product_page(pid, cookie)
-    if html is None:
-        logger.debug("No page for pid=%s, skipping", pid)
+    body = await fetch_product_config(pid, token)
+    if body is None:
+        logger.debug("No response for pid=%s, skipping", pid)
         return
 
-    raw_data = parse_product(html, pid)
-    stock_status = await try_add_to_cart(pid, cookie)
+    if not _is_success(body):
+        logger.debug("Product pid=%s not found or API error, skipping", pid)
+        return
 
+    raw_data = parse_product_config(body, pid)
     name = raw_data.get("name")
     price = raw_data.get("price")
+    billingcycle = raw_data.get("billingcycle")
+
+    if not name:
+        logger.debug("Product pid=%s has no name, skipping", pid)
+        return
+
+    stock_status = await try_add_to_cart(pid, billingcycle, token)
 
     old_snapshot, changed_fields = await database.upsert_product(
         pid=pid,
@@ -276,9 +292,9 @@ async def _process_pid(
         for f in changed_fields
     )
     title = f"[库存监控] PID {pid} 字段变化"
-    body = f"产品: {name or pid}\n变化字段:\n{changes_text}"
+    body_text = f"产品: {name or pid}\n变化字段:\n{changes_text}"
 
-    await notifier.send_all(notify_channels, title=title, body=body, pid=pid)
+    await notifier.send_all(notify_channels, title=title, body=body_text, pid=pid)
 
 
 # ---------------------------------------------------------------------------

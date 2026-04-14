@@ -142,23 +142,34 @@ async def login(req: LoginRequest) -> TokenResponse:
 
 @app.post(f"{BASE_PATH}/api/site_login", dependencies=[Depends(require_auth)])
 async def site_login(req: SiteLoginRequest) -> JSONResponse:
-    """Log into szhdy.com and store the session cookie in config."""
+    """Log into szhdy.com with username + API key and store the JWT token in config."""
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             r = await client.post(
                 "https://www.szhdy.com/zjmf_api_login",
-                json={"username": req.username, "password": req.password},
+                json={"username": req.username, "password": req.api_key},
                 headers={"Content-Type": "application/json"},
             )
-            cookies = dict(r.cookies)
-            cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+            body: dict = {}
+            try:
+                body = r.json()
+            except Exception:
+                pass
 
-            if r.status_code == 200 and cookie_str:
-                await database.update_config(login_cookie=cookie_str)
-                return JSONResponse({"status": "ok", "message": "登录成功，Cookie 已保存"})
+            # JWT is in response.data.jwt (preferred) or response.jwt
+            body_data = body.get("data")
+            jwt_token: str = (
+                body_data.get("jwt", "") if isinstance(body_data, dict)
+                else body.get("jwt", "")
+            )
+
+            if r.status_code == 200 and jwt_token:
+                await database.update_config(login_token=jwt_token)
+                return JSONResponse({"status": "ok", "message": "登录成功，JWT 已保存"})
             else:
+                msg = body.get("msg") or body.get("message") or f"HTTP {r.status_code}"
                 return JSONResponse(
-                    {"status": "error", "message": f"登录失败 HTTP {r.status_code}"},
+                    {"status": "error", "message": f"登录失败：{msg}"},
                     status_code=400,
                 )
     except Exception as e:
@@ -172,9 +183,10 @@ async def site_login(req: SiteLoginRequest) -> JSONResponse:
 @app.get(f"{BASE_PATH}/api/config", dependencies=[Depends(require_auth)])
 async def get_config() -> JSONResponse:
     cfg = await database.get_config()
-    # Don't expose full cookie to frontend
-    cfg_out = {k: v for k, v in cfg.items() if k != "login_cookie"}
+    # Don't expose full token/cookie to frontend
+    cfg_out = {k: v for k, v in cfg.items() if k not in ("login_cookie", "login_token")}
     cfg_out["has_cookie"] = bool(cfg.get("login_cookie"))
+    cfg_out["has_token"] = bool(cfg.get("login_token"))
     return JSONResponse(cfg_out)
 
 
