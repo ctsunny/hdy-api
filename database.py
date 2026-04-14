@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS products (
     raw_data        TEXT,
     first_seen_at   TEXT,
     last_checked_at TEXT,
-    last_changed_at TEXT
+    last_changed_at TEXT,
+    region          TEXT,
+    billingcycle_zh TEXT,
+    cycles_json     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS change_log (
@@ -60,6 +63,15 @@ CREATE TABLE IF NOT EXISTS notify_log (
     success  INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS site_accounts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    label       TEXT,
+    username    TEXT NOT NULL,
+    jwt_token   TEXT,
+    is_active   INTEGER DEFAULT 0,
+    created_at  TEXT
+);
+
 -- Ensure the single config row always exists
 INSERT OR IGNORE INTO config (id) VALUES (1);
 """
@@ -68,11 +80,19 @@ INSERT OR IGNORE INTO config (id) VALUES (1);
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_DDL)
-        # Migrate: add login_token column if it doesn't exist yet
+        # Migrate: add columns if they don't exist yet
         async with db.execute("PRAGMA table_info(config)") as cur:
             cols = {row[1] async for row in cur}
         if "login_token" not in cols:
             await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
+        async with db.execute("PRAGMA table_info(products)") as cur:
+            prod_cols = {row[1] async for row in cur}
+        if "region" not in prod_cols:
+            await db.execute("ALTER TABLE products ADD COLUMN region TEXT")
+        if "billingcycle_zh" not in prod_cols:
+            await db.execute("ALTER TABLE products ADD COLUMN billingcycle_zh TEXT")
+        if "cycles_json" not in prod_cols:
+            await db.execute("ALTER TABLE products ADD COLUMN cycles_json TEXT")
         await db.commit()
 
 
@@ -122,6 +142,9 @@ async def upsert_product(
     price: Optional[str],
     stock_status: Optional[str],
     raw_data: dict[str, Any],
+    region: Optional[str] = None,
+    billingcycle_zh: Optional[str] = None,
+    cycles_json: Optional[str] = None,
 ) -> tuple[Optional[dict[str, Any]], list[str]]:
     """
     Insert or update a product row.
@@ -144,9 +167,11 @@ async def upsert_product(
             await db.execute(
                 """INSERT INTO products
                    (pid, name, price, stock_status, raw_data,
-                    first_seen_at, last_checked_at, last_changed_at)
-                   VALUES (?,?,?,?,?,?,?,?)""",
-                (pid, name, price, stock_status, raw_json, now, now, now),
+                    first_seen_at, last_checked_at, last_changed_at,
+                    region, billingcycle_zh, cycles_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (pid, name, price, stock_status, raw_json, now, now, now,
+                 region, billingcycle_zh, cycles_json),
             )
             await db.commit()
             return None, []
@@ -174,22 +199,105 @@ async def upsert_product(
         await db.execute(
             """UPDATE products
                SET name=?, price=?, stock_status=?, raw_data=?,
-                   last_checked_at=?, last_changed_at=?
+                   last_checked_at=?, last_changed_at=?,
+                   region=?, billingcycle_zh=?, cycles_json=?
                WHERE pid=?""",
-            (name, price, stock_status, raw_json, now, last_changed, pid),
+            (name, price, stock_status, raw_json, now, last_changed,
+             region, billingcycle_zh, cycles_json, pid),
         )
         await db.commit()
         return old, changed_fields
 
 
-async def get_products(limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
+async def get_products(
+    limit: int = 200,
+    offset: int = 0,
+    region: Optional[str] = None,
+    stock_status: Optional[str] = None,
+    billingcycle: Optional[str] = None,
+    price_min: Optional[float] = None,
+    price_max: Optional[float] = None,
+) -> list[dict[str, Any]]:
+    conditions: list[str] = []
+    params: list[Any] = []
+
+    if region:
+        conditions.append("region = ?")
+        params.append(region)
+    if stock_status:
+        conditions.append("stock_status = ?")
+        params.append(stock_status)
+    if billingcycle:
+        conditions.append("billingcycle_zh = ?")
+        params.append(billingcycle)
+    if price_min is not None:
+        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        params.append(price_min)
+    if price_max is not None:
+        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        params.append(price_max)
+
+    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    params.extend([limit, offset])
+
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT * FROM products ORDER BY pid LIMIT ? OFFSET ?", (limit, offset)
+            f"SELECT * FROM products {where_clause} ORDER BY pid LIMIT ? OFFSET ?", params
         ) as cur:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
+
+
+async def count_products(
+    region: Optional[str] = None,
+    stock_status: Optional[str] = None,
+    billingcycle: Optional[str] = None,
+    price_min: Optional[float] = None,
+    price_max: Optional[float] = None,
+) -> int:
+    conditions: list[str] = []
+    params: list[Any] = []
+
+    if region:
+        conditions.append("region = ?")
+        params.append(region)
+    if stock_status:
+        conditions.append("stock_status = ?")
+        params.append(stock_status)
+    if billingcycle:
+        conditions.append("billingcycle_zh = ?")
+        params.append(billingcycle)
+    if price_min is not None:
+        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        params.append(price_min)
+    if price_max is not None:
+        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        params.append(price_max)
+
+    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(f"SELECT COUNT(*) FROM products {where_clause}", params) as cur:
+            row = await cur.fetchone()
+            return row[0] if row else 0
+
+
+async def get_product_filter_options() -> dict[str, list[str]]:
+    """Return distinct values for filter dropdowns."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        regions: list[str] = []
+        cycles: list[str] = []
+        async with db.execute(
+            "SELECT DISTINCT region FROM products WHERE region IS NOT NULL AND region != '' ORDER BY region"
+        ) as cur:
+            regions = [row[0] async for row in cur]
+        async with db.execute(
+            "SELECT DISTINCT billingcycle_zh FROM products WHERE billingcycle_zh IS NOT NULL AND billingcycle_zh != '' ORDER BY billingcycle_zh"
+        ) as cur:
+            cycles = [row[0] async for row in cur]
+        return {"regions": regions, "cycles": cycles}
 
 
 async def get_product(pid: int) -> Optional[dict[str, Any]]:
@@ -266,3 +374,58 @@ async def insert_notify_log(
             (pid, channel, message, now, int(success)),
         )
         await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Site accounts helpers
+# ---------------------------------------------------------------------------
+
+async def get_site_accounts() -> list[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, label, username, is_active, created_at FROM site_accounts ORDER BY id"
+        ) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def add_site_account(label: str, username: str, jwt_token: str) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "INSERT INTO site_accounts (label, username, jwt_token, is_active, created_at) VALUES (?,?,?,0,?)",
+            (label, username, jwt_token, now),
+        )
+        await db.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+
+async def delete_site_account(account_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM site_accounts WHERE id=?", (account_id,))
+        await db.commit()
+
+
+async def set_active_site_account(account_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE site_accounts SET is_active=0")
+        await db.execute("UPDATE site_accounts SET is_active=1 WHERE id=?", (account_id,))
+        await db.commit()
+        # Sync the active token into config so the crawler can pick it up
+        async with db.execute(
+            "SELECT jwt_token FROM site_accounts WHERE id=?", (account_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if row and row[0]:
+            await db.execute("UPDATE config SET login_token=? WHERE id=1", (row[0],))
+            await db.commit()
+
+
+async def get_active_site_account_token() -> Optional[str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT jwt_token FROM site_accounts WHERE is_active=1 LIMIT 1"
+        ) as cur:
+            row = await cur.fetchone()
+            return row[0] if row else None

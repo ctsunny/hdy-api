@@ -102,3 +102,24 @@ class PaginatedChanges(BaseModel):
     page: int
     page_size: int
     items: list[ChangeLog]
+
+
+class SiteAccount(BaseModel):
+    id: int
+    label: Optional[str] = None
+    username: str
+    is_active: bool = False
+    created_at: Optional[str] = None
+
+
+class SiteAccountCreate(BaseModel):
+    label: Optional[str] = None
+    username: str
+    api_key: str
+
+
+class PaginatedProducts(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[dict]

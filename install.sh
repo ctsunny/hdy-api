@@ -72,6 +72,46 @@ SERVICE_NAME="hdy-monitor"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Detect existing installation and show install menu
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ -d "${INSTALL_DIR}" ]]; then
+    echo ""
+    echo -e "${YELLOW}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║  检测到已安装 HDY Monitor，请选择操作                    ║${NC}"
+    echo -e "${YELLOW}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  ${CYAN}1.${NC}  升级安装（保留配置和数据，推荐）"
+    echo -e "  ${CYAN}2.${NC}  重新安装（清除旧数据，全新安装）"
+    echo -e "  ${CYAN}0.${NC}  取消"
+    echo ""
+    read -rp "  请输入选项 [0-2]: " _install_choice
+    case "${_install_choice}" in
+        1)
+            info "执行升级安装..."
+            if [[ -f "${INSTALL_DIR}/upgrade.sh" ]]; then
+                bash "${INSTALL_DIR}/upgrade.sh" --source "https://github.com/ctsunny/hdy-api.git"
+            else
+                UPGRADE_TMP=$(mktemp)
+                curl -fsSL "${GITHUB_RAW}/upgrade.sh" -o "${UPGRADE_TMP}"
+                bash "${UPGRADE_TMP}" --source "https://github.com/ctsunny/hdy-api.git"
+                rm -f "${UPGRADE_TMP}"
+            fi
+            exit 0
+            ;;
+        2)
+            warn "将清除旧安装数据，执行全新安装..."
+            systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
+            rm -rf "${INSTALL_DIR}"
+            success "旧安装已清除，继续全新安装"
+            ;;
+        0|*)
+            info "已取消安装"
+            exit 0
+            ;;
+    esac
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # System dependencies
 # ─────────────────────────────────────────────────────────────────────────────
 info "安装系统依赖..."

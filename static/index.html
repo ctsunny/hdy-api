@@ -130,12 +130,57 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <h2>产品列表</h2>
-      <button class="btn btn-sm btn-primary" onclick="loadProducts()">刷新</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);">每页:</label>
+        <select id="prod-page-size" onchange="prodPageSizeChange()" style="width:80px;">
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)">刷新</button>
+      </div>
+    </div>
+    <!-- Filter Panel -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
+      <div class="form-group">
+        <label>地区</label>
+        <select id="filter-region" style="width:140px;" onchange="loadProducts(1)">
+          <option value="">全部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>库存状态</label>
+        <select id="filter-stock" style="width:120px;" onchange="loadProducts(1)">
+          <option value="">全部</option>
+          <option value="in_stock">有货</option>
+          <option value="out_of_stock">无货</option>
+          <option value="unknown">未知</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>周期</label>
+        <select id="filter-cycle" style="width:120px;" onchange="loadProducts(1)">
+          <option value="">全部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>最低价</label>
+        <input type="number" id="filter-price-min" placeholder="0" style="width:90px;" oninput="_debounceProducts()">
+      </div>
+      <div class="form-group">
+        <label>最高价</label>
+        <input type="number" id="filter-price-max" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <button class="btn btn-sm" onclick="clearProductFilters()" style="background:#222;color:var(--text);">重置</button>
+      </div>
     </div>
     <table>
-      <thead><tr><th>PID</th><th>名称</th><th>价格</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
+      <thead><tr><th>PID</th><th>名称</th><th>地区</th><th>价格</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
       <tbody id="products-body"></tbody>
     </table>
+    <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
   </div>
 </div>
 
@@ -174,14 +219,21 @@
   </div>
 
   <div class="card">
-    <h2>网站登录 (szhdy.com)</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">使用账号 + API Key 登录，系统自动保存 JWT Token 用于库存检测（不登录无法判断库存）</p>
-    <div class="form-row">
-      <div class="form-group"><label>账号</label><input type="text" id="site-user" placeholder="szhdy 账号"></div>
-      <div class="form-group"><label>API Key</label><input type="text" id="site-apikey" placeholder="szhdy API Key"></div>
+    <h2>网站账号管理 (szhdy.com)</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">使用账号 + API Key 登录，系统保存 JWT Token 用于库存检测。可保存多个账号，点击「启用」切换使用中账号。</p>
+    <!-- Saved Accounts List -->
+    <div id="site-accounts-list" style="margin-bottom:14px;"></div>
+    <!-- Add Account Form -->
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;">➕ 添加账号</div>
+      <div class="form-row">
+        <div class="form-group"><label>备注名</label><input type="text" id="site-label" placeholder="可选备注"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="site-user" placeholder="szhdy 账号"></div>
+        <div class="form-group"><label>API Key</label><input type="text" id="site-apikey" placeholder="szhdy API Key"></div>
+      </div>
+      <button class="btn btn-primary" onclick="addSiteAccount()">登录并保存账号</button>
+      <span id="cookie-status" style="margin-left:12px;font-size:12px;"></span>
     </div>
-    <button class="btn btn-primary" onclick="doSiteLogin()">登录并保存 Token</button>
-    <span id="cookie-status" style="margin-left:12px;font-size:12px;"></span>
   </div>
 
   <div class="card">
@@ -215,6 +267,12 @@ const BASE = window.location.pathname.replace(/\/+$/, '');
 let _token = localStorage.getItem('hdy_token') || '';
 let _statusInterval = null;
 let _changesPage = 1;
+
+// ── HTML escape helper (prevent XSS) ──────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -314,21 +372,103 @@ async function stopCrawler() {
 }
 
 // ── Products ───────────────────────────────────────────────────────────────
-async function loadProducts() {
-  const r = await api('GET', '/api/products?limit=500');
+let _prodPage = 1;
+let _prodDebounceTimer = null;
+
+function _debounceProducts() {
+  clearTimeout(_prodDebounceTimer);
+  _prodDebounceTimer = setTimeout(() => loadProducts(1), 500);
+}
+
+function prodPageSizeChange() { loadProducts(1); }
+
+function clearProductFilters() {
+  document.getElementById('filter-region').value = '';
+  document.getElementById('filter-stock').value = '';
+  document.getElementById('filter-cycle').value = '';
+  document.getElementById('filter-price-min').value = '';
+  document.getElementById('filter-price-max').value = '';
+  loadProducts(1);
+}
+
+async function loadProductFilterOptions() {
+  try {
+    const r = await api('GET', '/api/products/filter_options');
+    if (!r.ok) return;
+    const opts = await r.json();
+    const regionSel = document.getElementById('filter-region');
+    const cycleSel = document.getElementById('filter-cycle');
+    const curRegion = regionSel.value;
+    const curCycle = cycleSel.value;
+    regionSel.innerHTML = '<option value="">全部</option>' + (opts.regions || []).map(v => `<option value="${esc(v)}"${v===curRegion?' selected':''}>${esc(v)}</option>`).join('');
+    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function loadProducts(page) {
+  if (page) _prodPage = page;
+  const pageSize = parseInt(document.getElementById('prod-page-size').value) || 20;
+  const region = document.getElementById('filter-region').value;
+  const stock = document.getElementById('filter-stock').value;
+  const cycle = document.getElementById('filter-cycle').value;
+  const priceMin = document.getElementById('filter-price-min').value;
+  const priceMax = document.getElementById('filter-price-max').value;
+
+  let url = `/api/products?page=${_prodPage}&page_size=${pageSize}`;
+  if (region) url += `&region=${encodeURIComponent(region)}`;
+  if (stock) url += `&stock_status=${encodeURIComponent(stock)}`;
+  if (cycle) url += `&billingcycle=${encodeURIComponent(cycle)}`;
+  if (priceMin) url += `&price_min=${priceMin}`;
+  if (priceMax) url += `&price_max=${priceMax}`;
+
+  const r = await api('GET', url);
   if (!r.ok) return;
-  const products = await r.json();
+  const data = await r.json();
+  const products = data.items || [];
   const tbody = document.getElementById('products-body');
   tbody.innerHTML = products.map(p => `
     <tr>
-      <td>${p.pid}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || '—'}</td>
-      <td>${p.price || '—'}</td>
+      <td>${esc(p.pid)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${p.name ? `<a href="https://www.szhdy.com/cart.php?a=add&pid=${encodeURIComponent(p.pid)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(p.name)}</a>` : '—'}</td>
+      <td>${esc(p.region) || '—'}</td>
+      <td>${esc(p.price) || '—'}</td>
+      <td>${esc(p.billingcycle_zh) || '—'}</td>
       <td>${stockBadge(p.stock_status)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_checked_at)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_changed_at)}</td>
-      <td><button class="btn btn-sm" onclick="showHistory(${p.pid})" style="background:#222;color:var(--text)">历史</button></td>
+      <td><button class="btn btn-sm" onclick="showHistory(${esc(p.pid)})" style="background:#222;color:var(--text)">历史</button></td>
     </tr>`).join('');
+  renderProductPagination(data.total, data.page, data.page_size);
+  await loadProductFilterOptions();
+}
+
+function renderProductPagination(total, page, pageSize) {
+  const pages = Math.ceil(total / pageSize) || 1;
+  const el = document.getElementById('products-pagination');
+  if (!el) return;
+  el.innerHTML = '';
+  const info = document.createElement('span');
+  info.style.cssText = 'font-size:12px;color:var(--muted);margin-right:8px;';
+  info.textContent = `共 ${total} 条，第 ${page}/${pages} 页`;
+  el.appendChild(info);
+
+  function addBtn(label, targetPage, isCurrent) {
+    const b = document.createElement('button');
+    b.className = 'btn btn-sm' + (isCurrent ? ' btn-primary' : '');
+    b.style.background = isCurrent ? '' : '#222'; b.style.color = '#fff';
+    b.textContent = label;
+    b.disabled = isCurrent;
+    b.onclick = () => loadProducts(targetPage);
+    el.appendChild(b);
+  }
+
+  if (page > 1) addBtn('«', 1, false);
+  if (page > 1) addBtn('‹', page - 1, false);
+  const start = Math.max(1, page - 3);
+  const end = Math.min(pages, page + 3);
+  for (let i = start; i <= end; i++) addBtn(i, i, i === page);
+  if (page < pages) addBtn('›', page + 1, false);
+  if (page < pages) addBtn('»', pages, false);
 }
 
 function stockBadge(s) {
@@ -368,10 +508,10 @@ function renderChangesTable(bodyId, items) {
   document.getElementById(bodyId).innerHTML = (items || []).map(c => `
     <tr>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(c.changed_at)}</td>
-      <td>${c.pid}</td>
-      <td>${c.field_name}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.old_value || '—'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.new_value || '—'}</td>
+      <td>${esc(c.pid)}</td>
+      <td>${esc(c.field_name)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.old_value) || '—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.new_value) || '—'}</td>
     </tr>`).join('');
 }
 
@@ -400,6 +540,7 @@ async function loadConfig() {
   const cs = document.getElementById('cookie-status');
   cs.textContent = c.has_token ? '✅ Token 已保存' : (c.has_cookie ? '✅ Cookie 已保存' : '⚠️ 未登录');
   cs.style.color = (c.has_token || c.has_cookie) ? 'var(--success)' : 'var(--warn)';
+  await loadSiteAccounts();
 }
 
 async function saveConfig() {
@@ -413,13 +554,60 @@ async function saveConfig() {
   toast(r.ok ? '配置已保存' : '保存失败', r.ok ? 'success' : 'error');
 }
 
-async function doSiteLogin() {
-  const u = document.getElementById('site-user').value;
-  const apiKey = document.getElementById('site-apikey').value;
-  const r = await api('POST', '/api/site_login', { username: u, api_key: apiKey });
+async function addSiteAccount() {
+  const label = document.getElementById('site-label').value.trim();
+  const u = document.getElementById('site-user').value.trim();
+  const apiKey = document.getElementById('site-apikey').value.trim();
+  if (!u || !apiKey) return toast('请输入账号和 API Key', 'error');
+  const r = await api('POST', '/api/site_accounts', { label, username: u, api_key: apiKey });
   const d = await r.json();
   toast(d.message, r.ok ? 'success' : 'error');
-  if (r.ok) loadConfig();
+  if (r.ok) {
+    document.getElementById('site-label').value = '';
+    document.getElementById('site-user').value = '';
+    document.getElementById('site-apikey').value = '';
+    loadSiteAccounts();
+  }
+}
+
+async function loadSiteAccounts() {
+  const r = await api('GET', '/api/site_accounts');
+  if (!r.ok) return;
+  const accounts = await r.json();
+  const el = document.getElementById('site-accounts-list');
+  if (!el) return;
+  if (!accounts || accounts.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无保存的账号</p>';
+    return;
+  }
+  el.innerHTML = `<table style="width:100%;margin-bottom:8px;">
+    <thead><tr><th>备注</th><th>账号</th><th>添加时间</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${accounts.map(a => `
+      <tr>
+        <td>${esc(a.label) || '—'}</td>
+        <td>${esc(a.username)}</td>
+        <td style="font-size:11px;color:var(--muted);">${a.created_at ? fmtDate(a.created_at) : '—'}</td>
+        <td>${a.is_active ? '<span class="badge badge-green">使用中</span>' : '<span class="badge badge-gray">未启用</span>'}</td>
+        <td style="display:flex;gap:6px;">
+          ${!a.is_active ? `<button class="btn btn-sm btn-success" onclick="activateSiteAccount(${parseInt(a.id)})">启用</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deleteSiteAccount(${parseInt(a.id)})">删除</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function activateSiteAccount(id) {
+  const r = await api('POST', `/api/site_accounts/${id}/activate`);
+  const d = await r.json();
+  toast(d.message || (r.ok ? '已切换' : '操作失败'), r.ok ? 'success' : 'error');
+  if (r.ok) loadSiteAccounts();
+}
+
+async function deleteSiteAccount(id) {
+  if (!confirm('确定删除该账号？')) return;
+  const r = await api('DELETE', `/api/site_accounts/${id}`);
+  toast(r.ok ? '账号已删除' : '删除失败', r.ok ? 'success' : 'error');
+  if (r.ok) loadSiteAccounts();
 }
 
 async function saveManualCookie() {
