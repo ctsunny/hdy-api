@@ -224,7 +224,7 @@ async def upsert_product(
 async def get_products(
     limit: int = 200,
     offset: int = 0,
-    region: Optional[str] = None,
+    name: Optional[str] = None,
     stock_status: Optional[str] = None,
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
@@ -233,9 +233,9 @@ async def get_products(
     conditions: list[str] = []
     params: list[Any] = []
 
-    if region:
-        conditions.append("region LIKE ?")
-        params.append(f"%{region}%")
+    if name:
+        conditions.append("name LIKE ?")
+        params.append(f"%{name}%")
     if stock_status:
         conditions.append("stock_status = ?")
         params.append(stock_status)
@@ -262,7 +262,7 @@ async def get_products(
 
 
 async def count_products(
-    region: Optional[str] = None,
+    name: Optional[str] = None,
     stock_status: Optional[str] = None,
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
@@ -271,9 +271,9 @@ async def count_products(
     conditions: list[str] = []
     params: list[Any] = []
 
-    if region:
-        conditions.append("region LIKE ?")
-        params.append(f"%{region}%")
+    if name:
+        conditions.append("name LIKE ?")
+        params.append(f"%{name}%")
     if stock_status:
         conditions.append("stock_status = ?")
         params.append(stock_status)

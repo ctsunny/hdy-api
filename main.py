@@ -316,7 +316,7 @@ async def crawler_status() -> CrawlerStatus:
 async def list_products(
     page: int = 1,
     page_size: int = 20,
-    region: Optional[str] = None,
+    name: Optional[str] = None,
     stock_status: Optional[str] = None,
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
@@ -327,14 +327,14 @@ async def list_products(
     products = await database.get_products(
         limit=page_size,
         offset=offset,
-        region=region,
+        name=name,
         stock_status=stock_status,
         billingcycle=billingcycle,
         price_min=price_min,
         price_max=price_max,
     )
     total = await database.count_products(
-        region=region,
+        name=name,
         stock_status=stock_status,
         billingcycle=billingcycle,
         price_min=price_min,
