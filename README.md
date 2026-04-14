@@ -16,7 +16,7 @@
 ## 一键安装
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/ctsunny/hdy-api/main/install.sh)
+curl -fsSL https://raw.githubusercontent.com/ctsunny/hdy-api/main/install.sh | sudo bash
 ```
 
 安装完成后，终端将显示访问信息：
@@ -27,9 +27,44 @@ sudo bash <(curl -fsSL https://raw.githubusercontent.com/ctsunny/hdy-api/main/in
 🔑  密码:      <随机密码>
 
 📄  完整信息已保存至: /opt/hdy-monitor/credentials.txt
+📋  管理面板:  输入 hdy 打开交互式管理菜单
 ```
 
 > **重要**：请立即记录或保存 `/opt/hdy-monitor/credentials.txt` 中的登录信息。
+
+---
+
+## 管理面板
+
+安装完成后，随时输入以下命令打开交互式管理菜单（类似 3x-ui 风格）：
+
+```bash
+hdy
+```
+
+菜单选项：
+
+```
+╔══════════════════════════════════════════════════════════╗
+║            HDY Monitor 管理面板                          ║
+╚══════════════════════════════════════════════════════════╝
+
+  服务状态: ● 运行中
+
+  ────── 服务控制 ──────
+  1.  查看运行状态与访问信息
+  2.  启动 HDY Monitor
+  3.  停止 HDY Monitor
+  4.  重启 HDY Monitor
+  5.  查看实时日志
+
+  ────── 管理 ──────
+  6.  修改配置（端口 / 账号 / 通知渠道）
+  7.  升级到最新版本
+  8.  卸载 HDY Monitor
+
+  0.  退出
+```
 
 ---
 
@@ -171,10 +206,10 @@ journalctl -u hdy-monitor -n 100
 ## 常见问题
 
 **Q：安装后忘记账号密码怎么办？**  
-A：执行 `sudo cat /opt/hdy-monitor/credentials.txt` 查看。也可通过 `sudo bash /opt/hdy-monitor/configure.sh` 菜单选项 2 重置密码。
+A：执行 `sudo cat /opt/hdy-monitor/credentials.txt` 查看。也可通过 `hdy` 菜单选项 6（修改配置）重置密码。
 
 **Q：如何查看当前访问地址？**  
-A：执行 `sudo bash /opt/hdy-monitor/configure.sh` 并选择选项 1。
+A：执行 `hdy` 并选择选项 1。
 
 **Q：服务启动失败怎么排查？**  
 A：运行 `journalctl -u hdy-monitor -n 50` 查看详细错误日志。
