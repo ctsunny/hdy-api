@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HDY 库存监控 v1.1.0</title>
+<title>HDY 库存监控 v1.1.1</title>
 <style>
   :root {
     --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
@@ -85,7 +85,7 @@
 </div>
 
 <header>
-  <h1>🏪 HDY 库存监控 <span style="font-size:12px;color:var(--muted);font-weight:400;">v1.1.0</span></h1>
+  <h1>🏪 HDY 库存监控 <span style="font-size:12px;color:var(--muted);font-weight:400;">v1.1.1</span></h1>
   <div style="display:flex;gap:12px;align-items:center;">
     <span id="status-badge">已停止</span>
     <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()">▶ 启动</button>
@@ -144,8 +144,8 @@
     <!-- Filter Panel -->
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
       <div class="form-group">
-        <label>地区关键词</label>
-        <input type="text" id="filter-region" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
+        <label>商品名</label>
+        <input type="text" id="filter-name" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
         <label>库存状态</label>
@@ -399,7 +399,7 @@ function _debounceProducts() {
 function prodPageSizeChange() { loadProducts(1); }
 
 function clearProductFilters() {
-  document.getElementById('filter-region').value = '';
+  document.getElementById('filter-name').value = '';
   document.getElementById('filter-stock').value = '';
   document.getElementById('filter-cycle').value = '';
   document.getElementById('filter-price-min').value = '';
@@ -421,14 +421,14 @@ async function loadProductFilterOptions() {
 async function loadProducts(page) {
   if (page) _prodPage = page;
   const pageSize = parseInt(document.getElementById('prod-page-size').value) || 20;
-  const region = document.getElementById('filter-region').value;
+  const region = document.getElementById('filter-name').value;
   const stock = document.getElementById('filter-stock').value;
   const cycle = document.getElementById('filter-cycle').value;
   const priceMin = document.getElementById('filter-price-min').value;
   const priceMax = document.getElementById('filter-price-max').value;
 
   let url = `/api/products?page=${_prodPage}&page_size=${pageSize}`;
-  if (region) url += `&region=${encodeURIComponent(region)}`;
+  if (region) url += `&name=${encodeURIComponent(region)}`;
   if (stock) url += `&stock_status=${encodeURIComponent(stock)}`;
   if (cycle) url += `&billingcycle=${encodeURIComponent(cycle)}`;
   if (priceMin) url += `&price_min=${priceMin}`;
