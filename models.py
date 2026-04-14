@@ -76,6 +76,7 @@ class TokenResponse(BaseModel):
 class ConfigUpdate(BaseModel):
     start_pid: Optional[int] = None
     end_pid: Optional[int] = None
+    exec_start_pid: Optional[int] = None
     interval_ms: Optional[int] = None
     loop_enabled: Optional[bool] = None
     login_cookie: Optional[str] = None
@@ -87,9 +88,11 @@ class CrawlerStatus(BaseModel):
     current_pid: Optional[int] = None
     start_pid: Optional[int] = None
     end_pid: Optional[int] = None
+    exec_start_pid: Optional[int] = None
     loop_enabled: bool = False
     checked_count: int = 0
     changed_count: int = 0
+    notify_paused: bool = False
 
 
 class NotifyTestRequest(BaseModel):

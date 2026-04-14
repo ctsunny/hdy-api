@@ -258,6 +258,8 @@ async def update_config(body: ConfigUpdate) -> JSONResponse:
         update["start_pid"] = body.start_pid
     if body.end_pid is not None:
         update["end_pid"] = body.end_pid
+    if body.exec_start_pid is not None:
+        update["exec_start_pid"] = body.exec_start_pid
     if body.interval_ms is not None:
         update["interval_ms"] = max(500, body.interval_ms)
     if body.loop_enabled is not None:
@@ -286,13 +288,23 @@ async def stop_crawler() -> JSONResponse:
     return JSONResponse({"stopped": True})
 
 
+@app.post(f"{BASE_PATH}/api/notify/toggle_pause", dependencies=[Depends(require_auth)])
+async def toggle_notify_pause() -> JSONResponse:
+    """Toggle notification pause for the current crawl round.
+    Auto-resets to unpaused at the start of the next round."""
+    paused = crawler.toggle_notify_pause()
+    return JSONResponse({"notify_paused": paused})
+
+
 @app.get(f"{BASE_PATH}/api/crawler/status", dependencies=[Depends(require_auth)])
 async def crawler_status() -> CrawlerStatus:
     status_obj = crawler.get_status()
     cfg = await database.get_config()
     status_obj.start_pid = cfg.get("start_pid")
     status_obj.end_pid = cfg.get("end_pid")
+    status_obj.exec_start_pid = cfg.get("exec_start_pid")
     status_obj.loop_enabled = cfg.get("loop_enabled", False)
+    status_obj.notify_paused = crawler.state.notify_paused
     return status_obj
 
 
