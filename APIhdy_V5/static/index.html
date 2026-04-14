@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>🦊 狐蒂云极速秒杀系统 V5.0 (Supreme Edition)</title>
+    <!-- 原始站点逻辑 -->
+    <script type="module" crossorigin src="/assets/index-v5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-v5.css">
+    
+    <!-- 4.0 增强型 UI 样式 -->
+    <style>
+      :root {
+        --primary: #06b6d4;
+        --secondary: #3b82f6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --bg-glass: rgba(15, 23, 42, 0.95);
+        --border-glass: rgba(255, 255, 255, 0.1);
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+      }
+
+      body {
+        background: #020617; /* 深空蓝背景 */
+        margin: 0; padding: 0;
+      }
+
+      /* 加载中动画 */
+      #v4-loader {
+        position: fixed;
+        inset: 0;
+        background: #020617;
+        z-index: 100001;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.5s;
+      }
+      .loader-circle {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(6, 182, 212, 0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s infinite linear;
+      }
+      .loader-text {
+        margin-top: 20px;
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 2px;
+      }
+
+      #ai-v4-panel {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 340px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 24px;
+        padding: 20px;
+        z-index: 100000;
+        color: var(--text-main);
+        font-family: 'Inter', -apple-system, sans-serif;
+        box-shadow: 
+          0 0 0 1px rgba(6, 182, 212, 0.1),
+          0 10px 40px -10px rgba(0, 0, 0, 0.5),
+          0 0 30px -5px rgba(6, 182, 212, 0.2);
+        backdrop-filter: blur(20px);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+        overflow: hidden;
+      }
+
+      #ai-v4-panel::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        opacity: 0.5;
+      }
+
+      #ai-v4-panel h3 {
+        margin: 0 0 16px 0;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        letter-spacing: 0.5px;
+      }
+
+      /* 状态圆点动画 */
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+        display: inline-block;
+      }
+      .dot-idle { background: #64748b; }
+      .dot-running { 
+        background: var(--success);
+        box-shadow: 0 0 8px var(--success);
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+
+      .ai-section {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+        transition: border-color 0.3s;
+      }
+      .ai-section:hover { border-color: rgba(6, 182, 212, 0.2); }
+
+      .ai-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 1px;
+      }
+
+      .ai-input-group { display: flex; gap: 8px; margin-bottom: 8px; }
+      
+      .ai-input, .ai-select {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        outline: none;
+        transition: all 0.2s;
+      }
+      .ai-input:focus { border-color: var(--primary); background: rgba(0,0,0,0.5); }
+
+      .ai-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .ai-btn:active { transform: scale(0.95); }
+      .btn-primary { background: var(--primary); color: #000; }
+      .btn-ghost { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+      .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+      .btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+      .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+      }
+      /* Switch UI */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 20px;
+      }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(255,255,255,0.1);
+        transition: .4s;
+        border-radius: 20px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px; width: 14px;
+        left: 3px; bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      input:checked + .slider { background-color: var(--primary); }
+      input:checked + .slider:before { transform: translateX(20px); }
+
+      #status-bar {
+        font-size: 11px;
+        text-align: center;
+        padding-top: 10px;
+        color: var(--text-muted);
+        border-top: 1px solid rgba(255,255,255,0.05);
+        margin-top: 16px;
+      }
+      .status-ok { color: var(--success); }
+      .status-err { color: var(--danger); }
+
+      /* 悬浮加载动画 */
+      .ai-loading-mini {
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(255,255,255,0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      #stop-loop-banner {
+        display: none;
+        background: linear-gradient(90deg, #991b1b, #ef4444);
+        margin: 12px -20px -20px -20px;
+        padding: 12px;
+        text-align: center;
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+        animation: slideUp 0.3s ease-out;
+      }
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+  </head>
+  <body>
+    <!-- 加载遮罩 -->
+    <div id="v4-loader">
+      <div class="loader-circle"></div>
+      <div class="loader-text">FOX DI CLOUD NATIVE 5.0</div>
+    </div>
+
+    <div id="app"></div>
+
+    <!-- 4.0 Pro Panel -->
+    <div id="ai-v4-panel">
+      <h3>
+        <span style="display:flex;align-items:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:8px;">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          狐蒂云秒杀 V5 Supreme
+        </span>
+        <span id="v4-indicator" style="font-size:10px; opacity:0.8;">
+          <span class="status-dot dot-idle"></span>待机
+        </span>
+      </h3>
+
+      <!-- 账号体系 -->
+      <div class="ai-section">
+        <span class="ai-label">Account 🔐</span>
+        <div class="ai-input-group">
+          <select id="acc-list" class="ai-select">
+            <option value="">快速切换账号</option>
+          </select>
+        </div>
+        <div class="ai-input-group">
+          <input type="text" id="user" class="ai-input" placeholder="手机号/邮箱">
+        </div>
+        <div class="ai-input-group">
+          <input type="text" id="pass" class="ai-input" placeholder="API 密钥">
+        </div>
+        <div class="ai-input-group" style="margin-bottom:0;">
+          <button id="btn-login" class="ai-btn btn-primary">快速登录</button>
+          <button id="btn-save" class="ai-btn btn-ghost">保存</button>
+        </div>
+      </div>
+
+      <!-- 设置 -->
+      <div class="ai-section">
+        <span class="ai-label">Settings ⚙</span>
+        <div class="ai-input-group">
+          <input type="text" id="qmsg-token" class="ai-input" placeholder="Qmsg酱 Token (通知)">
+        </div>
+        <div class="toggle-row">
+          <span style="font-size:12px;color:var(--text-main);">成功后自动循环抢购</span>
+          <label class="switch">
+            <input type="checkbox" id="auto-loop-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="status-bar">系统就绪</div>
+
+      <div id="stop-loop-banner">
+        ⏹ 停止循环抢购 (已下单 <span id="loop-count">0</span> 次)
+      </div>
+    </div>
+
+    <script>
+    (function () {
+      // 1. 核心常量与拦截
+      const BASE = 'https://www.szhdy.com';
+      let loopCount = 0;
+      let isLooping = false;
+
+      // 兼容旧版 localStorage 键位
+      const STORAGE_KEYS = {
+        ACCOUNTS: 'ai_accounts',
+        QMSG: 'ai_qmsg_token',
+        REPEAT: 'ai_auto_repeat'
+      };
+
+      // 遮罩消除逻辑
+      window.onload = () => {
+        const loader = document.getElementById('v4-loader');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 600);
+      };
+
+      // 屏蔽数据上报后门
+      const originalFetch = window.fetch;
+      window.fetch = function (url, options) {
+        if (typeof url === 'string' && (url.includes('/api_dummy_safe') || url.includes('/order/data.php'))) {
+          return Promise.resolve(new Response(JSON.stringify({ code: 1, status: 200, msg: 'Safe Mode' }), {
+            status: 200, headers: { 'Content-Type': 'application/json' }
+          }));
+        }
+        return originalFetch.apply(this, arguments);
+      };
+
+      // UI 更新函数
+      function updateStatus(msg, type = '') {
+        const el = document.getElementById('status-bar');
+        el.textContent = msg;
+        el.className = type ? 'status-' + type : '';
+      }
+
+      function setModuleState(state) {
+        const ind = document.getElementById('v4-indicator');
+        if (state === 'running') {
+          ind.innerHTML = '<span class="status-dot dot-running"></span>工作中';
+          document.getElementById('stop-loop-banner').style.display = 'block';
+        } else {
+          ind.innerHTML = '<span class="status-dot dot-idle"></span>待机';
+          document.getElementById('stop-loop-banner').style.display = 'none';
+        }
+      }
+
+      // XHR 钩子
+      const XHR = XMLHttpRequest.prototype;
+      const oOpen = XHR.open;
+      const oSend = XHR.send;
+
+      XHR.open = function(method, url) {
+        this._url = url;
+        return oOpen.apply(this, arguments);
+      };
+
+      XHR.send = function(body) {
+        if (this._url.includes('/cart/settle')) {
+          this.addEventListener('load', () => {
+            try {
+              const res = JSON.parse(this.responseText);
+              if (res.status == 200 || res.status === '200') {
+                onOrderSuccess(res.data?.invoiceid);
+              }
+            } catch(e){}
+          });
+        }
+        return oSend.apply(this, arguments);
+      };
+
+      function onOrderSuccess(invId) {
+        loopCount++;
+        document.getElementById('loop-count').textContent = loopCount;
+        updateStatus(`✔ 第 ${loopCount} 单成功: ${invId || 'OK'}`, 'ok');
+        
+        // 发送通知
+        const token = localStorage.getItem(STORAGE_KEYS.QMSG);
+        if (token) {
+          const msg = `✅ 秒杀成功！\n⏰ ${new Date().toLocaleTimeString()}\n🔖 单号：${invId || 'N/A'}\n🔄 累计下单：${loopCount}`;
+          originalFetch(`https://qmsg.zendee.cn/send/${token}`, {
+            method: 'POST', body: 'msg=' + encodeURIComponent(msg),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+          });
+        }
+
+        if (document.getElementById('auto-loop-toggle').checked) {
+          isLooping = true;
+          setModuleState('running');
+          setTimeout(() => {
+            if (!isLooping) return;
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('开始抢购'));
+            if (btn) btn.click();
+            else stopWorkflow('未发现抢购按钮');
+          }, 600);
+        }
+      }
+
+      function stopWorkflow(reason) {
+        isLooping = false;
+        setModuleState('idle');
+        updateStatus('⏹ 已停止: ' + (reason || '手动'), '');
+        const stopBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('停止') && !b.innerText.includes('循环'));
+        if (stopBtn) stopBtn.click();
+      }
+
+      // 交互逻辑
+      window.addEventListener('DOMContentLoaded', () => {
+        const accounts = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACCOUNTS) || '{}');
+        const sel = document.getElementById('acc-list');
+        const updateAccSelect = () => {
+          sel.innerHTML = '<option value="">快速切换账号</option>';
+          Object.keys(accounts).forEach(u => {
+            const op = new Option(u, u); sel.add(op);
+          });
+        };
+        updateAccSelect();
+
+        sel.onchange = () => {
+          if (sel.value) {
+            document.getElementById('user').value = sel.value;
+            document.getElementById('pass').value = accounts[sel.value];
+          }
+        };
+
+        document.getElementById('btn-save').onclick = () => {
+          const u = document.getElementById('user').value.trim();
+          const p = document.getElementById('pass').value.trim();
+          if (u && p) {
+            accounts[u] = p;
+            localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(accounts));
+            updateAccSelect();
+            updateStatus('账号已保存', 'ok');
+          }
+        };
+
+        document.getElementById('btn-login').onclick = async () => {
+          const u = document.getElementById('user').value.trim();
+          const p = document.getElementById('pass').value.trim();
+          if (!u || !p) return updateStatus('请输入完整信息', 'err');
+          
+          updateStatus('正在通过原生代理验证...', 'ok');
+          document.getElementById('btn-login').disabled = true;
+          document.getElementById('btn-login').innerHTML = '<div class="ai-loading-mini"></div> 验证中';
+
+          try {
+            // 使用 v4.2 原生代理
+            const r = await originalFetch('/local_proxy_login', {
+              method: 'POST', 
+              body: JSON.stringify({username: u, password: p}),
+              headers: {'Content-Type': 'application/json'}
+            });
+            const d = await r.json();
+            if (d.status == 200 || d.status === '200') {
+              updateStatus('✔ 登录成功，系统即将重启', 'ok');
+              setTimeout(() => location.reload(), 1000);
+            } else {
+              updateStatus('❌ 登录失败: ' + (d.msg || '凭据错误'), 'err');
+              document.getElementById('btn-login').disabled = false;
+              document.getElementById('btn-login').innerHTML = '快速登录';
+            }
+          } catch(e) { 
+            updateStatus('❌ 代理通讯失败: ' + e.message, 'err'); 
+            document.getElementById('btn-login').disabled = false;
+            document.getElementById('btn-login').innerHTML = '快速登录';
+          }
+        };
+
+        document.getElementById('qmsg-token').value = localStorage.getItem(STORAGE_KEYS.QMSG) || '';
+        document.getElementById('qmsg-token').oninput = (e) => localStorage.setItem(STORAGE_KEYS.QMSG, e.target.value);
+
+        const repeatToggle = document.getElementById('auto-loop-toggle');
+        repeatToggle.checked = localStorage.getItem(STORAGE_KEYS.REPEAT) === 'true';
+        repeatToggle.onchange = (e) => localStorage.setItem(STORAGE_KEYS.REPEAT, e.target.checked);
+
+        document.getElementById('stop-loop-banner').onclick = () => stopWorkflow('用户手动拦截');
+
+        // 检测原始停止按钮
+        document.addEventListener('click', (e) => {
+          if (e.target.innerText?.includes('停止') && !e.target.id?.includes('stop-loop')) {
+            if (isLooping) stopWorkflow('外部系统干预');
+          }
+        });
+
+        console.log('%c APIhdy V5 Supreme Loaded ', 'background: #06b6d4; color: #000; font-weight: bold;');
+      });
+    })();
+    </script>
+  </body>
+</html>
