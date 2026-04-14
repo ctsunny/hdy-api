@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+VERSION="1.1.0"
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
@@ -47,7 +49,10 @@ PYEOF
             port=$(echo "${info_line}" | cut -f1)
             base_path=$(echo "${info_line}" | cut -f2)
             username=$(echo "${info_line}" | cut -f3)
-            server_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "YOUR_IP")
+            server_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
+                     || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
+                     || hostname -I 2>/dev/null | awk '{print $1}' \
+                     || echo "YOUR_IP")
             echo -e "  🌐  访问地址:  ${CYAN}http://${server_ip}:${port}${base_path}/${NC}"
             echo -e "  👤  账号:      ${YELLOW}${username}${NC}"
             echo -e "  🔑  密码:      ${YELLOW}(见 ${cred})${NC}"
@@ -150,7 +155,7 @@ main_menu() {
 
         echo ""
         echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║            HDY Monitor 管理面板                          ║${NC}"
+        echo -e "${GREEN}║       HDY Monitor v${VERSION} 管理面板                    ║${NC}"
         echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "  服务状态: ${status_str}"

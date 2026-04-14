@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+VERSION="1.1.0"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,16 +182,19 @@ chmod +x /usr/local/bin/hdy
 success "hdy 命令已安装 (输入 hdy 打开管理面板)"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Get server IP
+# Get server IP (try public IP first, fallback to internal IP)
 # ─────────────────────────────────────────────────────────────────────────────
-SERVER_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "YOUR_SERVER_IP")
+SERVER_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
+         || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
+         || hostname -I | awk '{print $1}' 2>/dev/null \
+         || echo "YOUR_SERVER_IP")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Save credentials to file
 # ─────────────────────────────────────────────────────────────────────────────
 CRED_FILE="${INSTALL_DIR}/credentials.txt"
 cat > "${CRED_FILE}" <<EOF
-HDY Monitor 访问信息
+HDY Monitor v${VERSION} 访问信息
 ====================
 访问地址: http://${SERVER_IP}:${PORT}${BASE_PATH}/
 管理员账号: ${ADMIN_USER}
@@ -214,7 +219,7 @@ chmod 600 "${CRED_FILE}"
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║          HDY Monitor 安装成功！                          ║${NC}"
+echo -e "${GREEN}║       HDY Monitor v${VERSION} 安装成功！                  ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  🌐  访问地址:  ${CYAN}http://${SERVER_IP}:${PORT}${BASE_PATH}/${NC}"
