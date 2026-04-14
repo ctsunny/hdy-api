@@ -70,14 +70,31 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. 获取新代码
 # ─────────────────────────────────────────────────────────────────────────────
-if [[ -n "${SOURCE_REPO}" ]]; then
-    # 从 Git 仓库拉取
-    info "从 Git 仓库获取最新代码: ${SOURCE_REPO}..."
-    command -v git &>/dev/null || die "未安装 git，请运行: apt-get install git"
+GITHUB_RAW="https://raw.githubusercontent.com/ctsunny/hdy-api/main"
 
+if [[ -n "${SOURCE_REPO}" ]]; then
+    # 从 GitHub 直接下载最新文件（无需 git）
+    info "从 GitHub 下载最新代码: ${GITHUB_RAW}..."
     TMPDIR_GIT=$(mktemp -d)
-    git clone --depth=1 "${SOURCE_REPO}" "${TMPDIR_GIT}/repo"
-    NEW_SOURCE="${TMPDIR_GIT}/repo"
+    FILES=(
+        requirements.txt
+        main.py
+        models.py
+        database.py
+        crawler.py
+        notifier.py
+        configure.sh
+        upgrade.sh
+        uninstall.sh
+        hdy.sh
+        "hdy-monitor.service"
+    )
+    for f in "${FILES[@]}"; do
+        curl -fsSL "${GITHUB_RAW}/${f}" -o "${TMPDIR_GIT}/${f}"
+    done
+    mkdir -p "${TMPDIR_GIT}/static"
+    curl -fsSL "${GITHUB_RAW}/static/index.html" -o "${TMPDIR_GIT}/static/index.html"
+    NEW_SOURCE="${TMPDIR_GIT}"
 
 elif [[ -n "${SOURCE_DIR}" ]]; then
     # 从本地目录复制
@@ -85,7 +102,7 @@ elif [[ -n "${SOURCE_DIR}" ]]; then
     info "从本地目录获取新代码: ${SOURCE_DIR}..."
     NEW_SOURCE="${SOURCE_DIR}"
 
-elif [[ -d "${INSTALL_DIR}/.git" ]]; then
+elif [[ -d "${INSTALL_DIR}/.git" ]] && command -v git &>/dev/null; then
     # 安装目录本身是 Git 仓库，直接 pull
     info "从 Git 仓库拉取更新..."
     cd "${INSTALL_DIR}"
