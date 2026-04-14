@@ -90,6 +90,7 @@
     <span id="status-badge">已停止</span>
     <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()">▶ 启动</button>
     <button class="btn btn-sm btn-danger" id="btn-stop" onclick="stopCrawler()" style="display:none">⏹ 停止</button>
+    <button class="btn btn-sm" id="btn-pause-notify" onclick="toggleNotifyPause()" style="background:#333;color:var(--text);display:none" title="暂停/恢复推送通知（本轮有效，下轮自动恢复）">🔔 暂停推送</button>
   </div>
 </header>
 
@@ -339,6 +340,15 @@ async function pollStatus() {
     badge.className = s.running ? 'running' : '';
     document.getElementById('btn-start').style.display = s.running ? 'none' : '';
     document.getElementById('btn-stop').style.display = s.running ? '' : 'none';
+    const pauseBtn = document.getElementById('btn-pause-notify');
+    pauseBtn.style.display = s.running ? '' : 'none';
+    if (s.notify_paused) {
+      pauseBtn.textContent = '🔕 已暂停推送';
+      pauseBtn.style.background = 'var(--warn)'; pauseBtn.style.color = '#000';
+    } else {
+      pauseBtn.textContent = '🔔 暂停推送';
+      pauseBtn.style.background = '#333'; pauseBtn.style.color = 'var(--text)';
+    }
     if (s.running && s.start_pid && s.end_pid && s.current_pid) {
       const pct = Math.round((s.current_pid - s.start_pid) / (s.end_pid - s.start_pid + 1) * 100);
       document.getElementById('progress-bar').style.width = pct + '%';
@@ -368,6 +378,13 @@ async function startCrawler() {
 async function stopCrawler() {
   await api('POST', '/api/crawler/stop');
   toast('爬虫已停止'); await pollStatus();
+}
+
+async function toggleNotifyPause() {
+  const r = await api('POST', '/api/notify/toggle_pause');
+  const d = await r.json();
+  toast(d.notify_paused ? '推送已暂停（本轮结束后自动恢复）' : '推送已恢复', d.notify_paused ? '' : 'success');
+  await pollStatus();
 }
 
 // ── Products ───────────────────────────────────────────────────────────────

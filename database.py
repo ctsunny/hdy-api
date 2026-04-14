@@ -191,9 +191,18 @@ async def upsert_product(
                 changed_fields.append(field)
 
         # Check raw_data changes (any other field)
+        # Exclude noisy/redundant keys that should never trigger notifications.
+        _RAW_SKIP = {"pid", "product_raw", "billingcycle"}
         old_raw = json.loads(old.get("raw_data") or "{}")
         for k, v in raw_data.items():
-            if str(old_raw.get(k, "")) != str(v) and k not in ("name", "price", "stock_status"):
+            if k in _RAW_SKIP or k in ("name", "price", "stock_status"):
+                continue
+            old_v = old_raw.get(k)
+            # Treat None and "" as equivalent — avoids false positives when a
+            # new field was added to parse_product_config after the row was stored.
+            if (old_v is None or old_v == "") and (v is None or v == ""):
+                continue
+            if str(old_v if old_v is not None else "") != str(v if v is not None else ""):
                 if k not in changed_fields:
                     changed_fields.append(k)
 

@@ -42,6 +42,7 @@ class _State:
     current_pid: Optional[int] = None
     checked_count: int = 0
     changed_count: int = 0
+    notify_paused: bool = False
     _task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
 state = _State()
@@ -53,6 +54,7 @@ def get_status() -> CrawlerStatus:
         current_pid=state.current_pid,
         checked_count=state.checked_count,
         changed_count=state.changed_count,
+        notify_paused=state.notify_paused,
     )
 
 
@@ -220,6 +222,9 @@ async def _crawl_loop() -> None:
 
     try:
         while state.running:
+            # Auto-resume notifications at the start of every new round.
+            state.notify_paused = False
+
             cfg = await database.get_config()
             start_pid: int = cfg.get("start_pid", 1150)
             end_pid: int = cfg.get("end_pid", 1200)
@@ -305,8 +310,11 @@ async def _process_pid(
     state.changed_count += 1
     logger.info("pid=%s changed fields: %s", pid, changed_fields)
 
-    # Record each changed field in change_log
+    # Record each changed field in change_log (exclude internal tracking keys)
+    _SKIP_LOG = {"product_raw", "pid", "billingcycle"}
     for field in changed_fields:
+        if field in _SKIP_LOG:
+            continue
         old_val = old_snapshot.get(field) if old_snapshot else None
         if field in ("name", "price", "stock_status"):
             new_val = {"name": name, "price": price, "stock_status": stock_status}.get(field)
@@ -314,14 +322,51 @@ async def _process_pid(
             new_val = raw_data.get(field)
         await database.insert_change(pid, field, old_val, new_val)
 
-    # Build notification
+    # Build notification — skip internal/noisy fields
+    _NOTIFY_SKIP = {"product_raw", "pid", "billingcycle"}
+    notify_fields = [f for f in changed_fields if f not in _NOTIFY_SKIP]
+    if not notify_fields or state.notify_paused:
+        return
+
+    _FIELD_LABELS: dict[str, str] = {
+        "name": "产品名",
+        "price": "价格",
+        "stock_status": "库存状态",
+        "region": "地区",
+        "billingcycle_zh": "周期",
+        "cycles_json": "价格/周期",
+    }
+
+    def _fmt_val(v: Any, field: str) -> str:
+        if v is None or v == "" or v == "None":
+            return "—"
+        if field == "stock_status":
+            return {"in_stock": "有货", "out_of_stock": "无货", "unknown": "未知"}.get(str(v), str(v))
+        s = str(v)
+        return (s[:120] + "…") if len(s) > 120 else s
+
+    def _old_val(field: str) -> Any:
+        if old_snapshot is None:
+            return None
+        # Direct DB columns
+        if field in ("name", "price", "stock_status", "region", "billingcycle_zh", "cycles_json"):
+            return old_snapshot.get(field)
+        # Fall back to serialised raw_data
+        try:
+            return json.loads(old_snapshot.get("raw_data") or "{}").get(field)
+        except Exception:
+            return None
+
+    _new_lookup: dict[str, Any] = {"name": name, "price": price, "stock_status": stock_status}
+
     changes_text = "\n".join(
-        f"  {f}: {(old_snapshot or {}).get(f, '(new)')} → "
-        f"{raw_data.get(f, {'name': name, 'price': price, 'stock_status': stock_status}.get(f, ''))}"
-        for f in changed_fields
+        f"  {_FIELD_LABELS.get(f, f)}: "
+        f"{_fmt_val(_old_val(f), f)} → "
+        f"{_fmt_val(_new_lookup.get(f, raw_data.get(f)), f)}"
+        for f in notify_fields
     )
-    title = f"[库存监控] PID {pid} 字段变化"
-    body_text = f"产品: {name or pid}\n变化字段:\n{changes_text}"
+    title = f"[库存监控] PID {pid} {name or ''}"
+    body_text = f"变化字段:\n{changes_text}"
 
     await notifier.send_all(notify_channels, title=title, body=body_text, pid=pid)
 
@@ -346,3 +391,9 @@ async def stop_crawler() -> None:
         except asyncio.CancelledError:
             pass
     state._task = None
+
+
+def toggle_notify_pause() -> bool:
+    """Toggle notification pause. Returns new notify_paused value."""
+    state.notify_paused = not state.notify_paused
+    return state.notify_paused

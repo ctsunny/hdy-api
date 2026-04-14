@@ -288,6 +288,14 @@ async def stop_crawler() -> JSONResponse:
     return JSONResponse({"stopped": True})
 
 
+@app.post(f"{BASE_PATH}/api/notify/toggle_pause", dependencies=[Depends(require_auth)])
+async def toggle_notify_pause() -> JSONResponse:
+    """Toggle notification pause for the current crawl round.
+    Auto-resets to unpaused at the start of the next round."""
+    paused = crawler.toggle_notify_pause()
+    return JSONResponse({"notify_paused": paused})
+
+
 @app.get(f"{BASE_PATH}/api/crawler/status", dependencies=[Depends(require_auth)])
 async def crawler_status() -> CrawlerStatus:
     status_obj = crawler.get_status()
@@ -296,6 +304,7 @@ async def crawler_status() -> CrawlerStatus:
     status_obj.end_pid = cfg.get("end_pid")
     status_obj.exec_start_pid = cfg.get("exec_start_pid")
     status_obj.loop_enabled = cfg.get("loop_enabled", False)
+    status_obj.notify_paused = crawler.state.notify_paused
     return status_obj
 
 
