@@ -271,6 +271,12 @@ async def list_changes(page: int = 1, page_size: int = 50) -> PaginatedChanges:
     )
 
 
+@app.delete(f"{BASE_PATH}/api/changes", dependencies=[Depends(require_auth)])
+async def delete_changes() -> JSONResponse:
+    await database.clear_changes()
+    return JSONResponse({"status": "ok"})
+
+
 # ---------------------------------------------------------------------------
 # Notify test route
 # ---------------------------------------------------------------------------

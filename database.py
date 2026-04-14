@@ -218,6 +218,12 @@ async def insert_change(
         await db.commit()
 
 
+async def clear_changes() -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM change_log")
+        await db.commit()
+
+
 async def get_changes(
     pid: Optional[int] = None,
     page: int = 1,

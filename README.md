@@ -1,4 +1,4 @@
-# HDY Monitor
+# HDY Monitor v1.1.0
 
 基于 FastAPI 的库存变动监控服务，自动爬取 szhdy.com 并多渠道推送通知。
 
@@ -18,6 +18,8 @@
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ctsunny/hdy-api/main/install.sh | sudo bash
 ```
+
+> **当前版本：v1.1.0**
 
 安装完成后，终端将显示访问信息：
 
@@ -205,8 +207,11 @@ journalctl -u hdy-monitor -n 100
 
 ## 常见问题
 
-**Q：安装后忘记账号密码怎么办？**  
+**Q：忘记账号密码怎么办？**  
 A：执行 `sudo cat /opt/hdy-monitor/credentials.txt` 查看。也可通过 `hdy` 菜单选项 6（修改配置）重置密码。
+
+**Q：如何登录 szhdy.com 进行库存检测？**  
+A：在后台「配置」页面，使用账号 + **API Key**（非登录密码）登录，系统会自动保存 JWT Token。
 
 **Q：如何查看当前访问地址？**  
 A：执行 `hdy` 并选择选项 1。

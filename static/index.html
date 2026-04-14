@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HDY 库存监控</title>
+<title>HDY 库存监控 v1.1.0</title>
 <style>
   :root {
     --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
@@ -85,7 +85,7 @@
 </div>
 
 <header>
-  <h1>🏪 HDY 库存监控</h1>
+  <h1>🏪 HDY 库存监控 <span style="font-size:12px;color:var(--muted);font-weight:400;">v1.1.0</span></h1>
   <div style="display:flex;gap:12px;align-items:center;">
     <span id="status-badge">已停止</span>
     <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()">▶ 启动</button>
@@ -147,6 +147,7 @@
       <div style="display:flex;gap:8px;">
         <input type="number" id="filter-pid" placeholder="PID 过滤" style="width:120px;" oninput="loadChanges()">
         <button class="btn btn-sm btn-primary" onclick="loadChanges()">刷新</button>
+        <button class="btn btn-sm btn-danger" onclick="clearChanges()">🗑 一键清空</button>
       </div>
     </div>
     <table>
@@ -174,12 +175,12 @@
 
   <div class="card">
     <h2>网站登录 (szhdy.com)</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">登录后系统自动保存 Cookie 用于库存检测（不登录无法判断库存）</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">使用账号 + API Key 登录，系统自动保存 JWT Token 用于库存检测（不登录无法判断库存）</p>
     <div class="form-row">
       <div class="form-group"><label>账号</label><input type="text" id="site-user" placeholder="szhdy 账号"></div>
-      <div class="form-group"><label>密码</label><input type="password" id="site-pass" placeholder="szhdy 密码"></div>
+      <div class="form-group"><label>API Key</label><input type="text" id="site-apikey" placeholder="szhdy API Key"></div>
     </div>
-    <button class="btn btn-primary" onclick="doSiteLogin()">登录并保存 Cookie</button>
+    <button class="btn btn-primary" onclick="doSiteLogin()">登录并保存 Token</button>
     <span id="cookie-status" style="margin-left:12px;font-size:12px;"></span>
   </div>
 
@@ -355,6 +356,14 @@ async function loadChanges(page) {
   renderPagination(d.total, d.page, d.page_size);
 }
 
+async function clearChanges() {
+  if (!confirm('确定要清空所有抓取记录吗？此操作不可恢复。')) return;
+  const r = await api('DELETE', '/api/changes');
+  const d = await r.json().catch(() => ({}));
+  toast(r.ok ? '抓取记录已清空' : ('清空失败：' + (d.detail || d.message || r.status)), r.ok ? 'success' : 'error');
+  if (r.ok) { _changesPage = 1; loadChanges(); loadDashChanges(); }
+}
+
 function renderChangesTable(bodyId, items) {
   document.getElementById(bodyId).innerHTML = (items || []).map(c => `
     <tr>
@@ -389,8 +398,8 @@ async function loadConfig() {
   document.getElementById('cfg-interval').value = c.interval_ms || 1500;
   document.getElementById('cfg-loop').value = c.loop_enabled ? 'true' : 'false';
   const cs = document.getElementById('cookie-status');
-  cs.textContent = c.has_cookie ? '✅ Cookie 已保存' : '⚠️ 未登录';
-  cs.style.color = c.has_cookie ? 'var(--success)' : 'var(--warn)';
+  cs.textContent = c.has_token ? '✅ Token 已保存' : (c.has_cookie ? '✅ Cookie 已保存' : '⚠️ 未登录');
+  cs.style.color = (c.has_token || c.has_cookie) ? 'var(--success)' : 'var(--warn)';
 }
 
 async function saveConfig() {
@@ -406,8 +415,8 @@ async function saveConfig() {
 
 async function doSiteLogin() {
   const u = document.getElementById('site-user').value;
-  const p = document.getElementById('site-pass').value;
-  const r = await api('POST', '/api/site_login', { username: u, password: p });
+  const apiKey = document.getElementById('site-apikey').value;
+  const r = await api('POST', '/api/site_login', { username: u, api_key: apiKey });
   const d = await r.json();
   toast(d.message, r.ok ? 'success' : 'error');
   if (r.ok) loadConfig();
