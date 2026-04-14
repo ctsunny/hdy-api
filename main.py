@@ -168,7 +168,7 @@ async def site_login(req: SiteLoginRequest) -> JSONResponse:
 
             if r.status_code == 200 and jwt_token:
                 await database.update_config(login_token=jwt_token)
-                return JSONResponse({"status": "ok", "message": "登录成功，JWT 已保存", "jwt_token": jwt_token})
+                return JSONResponse({"status": "ok", "message": "登录成功，JWT 已保存"})
             else:
                 msg = body.get("msg") or body.get("message") or f"HTTP {r.status_code}"
                 return JSONResponse(

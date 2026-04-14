@@ -268,6 +268,12 @@ let _token = localStorage.getItem('hdy_token') || '';
 let _statusInterval = null;
 let _changesPage = 1;
 
+// ── HTML escape helper (prevent XSS) ──────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = { method, headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' } };
@@ -394,8 +400,8 @@ async function loadProductFilterOptions() {
     const cycleSel = document.getElementById('filter-cycle');
     const curRegion = regionSel.value;
     const curCycle = cycleSel.value;
-    regionSel.innerHTML = '<option value="">全部</option>' + (opts.regions || []).map(v => `<option value="${v}"${v===curRegion?' selected':''}>${v}</option>`).join('');
-    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${v}"${v===curCycle?' selected':''}>${v}</option>`).join('');
+    regionSel.innerHTML = '<option value="">全部</option>' + (opts.regions || []).map(v => `<option value="${esc(v)}"${v===curRegion?' selected':''}>${esc(v)}</option>`).join('');
+    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
   } catch(e) {}
 }
 
@@ -422,36 +428,47 @@ async function loadProducts(page) {
   const tbody = document.getElementById('products-body');
   tbody.innerHTML = products.map(p => `
     <tr>
-      <td>${p.pid}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.name || ''}">${p.name || '—'}</td>
-      <td>${p.region || '—'}</td>
-      <td>${p.price || '—'}</td>
-      <td>${p.billingcycle_zh || '—'}</td>
+      <td>${esc(p.pid)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${esc(p.name) || '—'}</td>
+      <td>${esc(p.region) || '—'}</td>
+      <td>${esc(p.price) || '—'}</td>
+      <td>${esc(p.billingcycle_zh) || '—'}</td>
       <td>${stockBadge(p.stock_status)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_checked_at)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_changed_at)}</td>
-      <td><button class="btn btn-sm" onclick="showHistory(${p.pid})" style="background:#222;color:var(--text)">历史</button></td>
+      <td><button class="btn btn-sm" onclick="showHistory(${esc(p.pid)})" style="background:#222;color:var(--text)">历史</button></td>
     </tr>`).join('');
   renderProductPagination(data.total, data.page, data.page_size);
   await loadProductFilterOptions();
 }
 
 function renderProductPagination(total, page, pageSize) {
-  const pages = Math.ceil(total / pageSize);
+  const pages = Math.ceil(total / pageSize) || 1;
   const el = document.getElementById('products-pagination');
   if (!el) return;
   el.innerHTML = '';
   const info = document.createElement('span');
   info.style.cssText = 'font-size:12px;color:var(--muted);margin-right:8px;';
-  info.textContent = `共 ${total} 条，第 ${page}/${pages||1} 页`;
+  info.textContent = `共 ${total} 条，第 ${page}/${pages} 页`;
   el.appendChild(info);
-  for (let i = 1; i <= Math.min(pages, 20); i++) {
+
+  function addBtn(label, targetPage, isCurrent) {
     const b = document.createElement('button');
-    b.className = 'btn btn-sm' + (i === page ? ' btn-primary' : '');
-    b.style.background = i === page ? '' : '#222'; b.style.color = '#fff';
-    b.textContent = i; b.onclick = () => loadProducts(i);
+    b.className = 'btn btn-sm' + (isCurrent ? ' btn-primary' : '');
+    b.style.background = isCurrent ? '' : '#222'; b.style.color = '#fff';
+    b.textContent = label;
+    b.disabled = isCurrent;
+    b.onclick = () => loadProducts(targetPage);
     el.appendChild(b);
   }
+
+  if (page > 1) addBtn('«', 1, false);
+  if (page > 1) addBtn('‹', page - 1, false);
+  const start = Math.max(1, page - 3);
+  const end = Math.min(pages, page + 3);
+  for (let i = start; i <= end; i++) addBtn(i, i, i === page);
+  if (page < pages) addBtn('›', page + 1, false);
+  if (page < pages) addBtn('»', pages, false);
 }
 
 function stockBadge(s) {
@@ -491,10 +508,10 @@ function renderChangesTable(bodyId, items) {
   document.getElementById(bodyId).innerHTML = (items || []).map(c => `
     <tr>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(c.changed_at)}</td>
-      <td>${c.pid}</td>
-      <td>${c.field_name}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.old_value || '—'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.new_value || '—'}</td>
+      <td>${esc(c.pid)}</td>
+      <td>${esc(c.field_name)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.old_value) || '—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.new_value) || '—'}</td>
     </tr>`).join('');
 }
 
@@ -567,13 +584,13 @@ async function loadSiteAccounts() {
     <thead><tr><th>备注</th><th>账号</th><th>添加时间</th><th>状态</th><th>操作</th></tr></thead>
     <tbody>${accounts.map(a => `
       <tr>
-        <td>${a.label || '—'}</td>
-        <td>${a.username}</td>
+        <td>${esc(a.label) || '—'}</td>
+        <td>${esc(a.username)}</td>
         <td style="font-size:11px;color:var(--muted);">${a.created_at ? fmtDate(a.created_at) : '—'}</td>
         <td>${a.is_active ? '<span class="badge badge-green">使用中</span>' : '<span class="badge badge-gray">未启用</span>'}</td>
         <td style="display:flex;gap:6px;">
-          ${!a.is_active ? `<button class="btn btn-sm btn-success" onclick="activateSiteAccount(${a.id})">启用</button>` : ''}
-          <button class="btn btn-sm btn-danger" onclick="deleteSiteAccount(${a.id})">删除</button>
+          ${!a.is_active ? `<button class="btn btn-sm btn-success" onclick="activateSiteAccount(${parseInt(a.id)})">启用</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deleteSiteAccount(${parseInt(a.id)})">删除</button>
         </td>
       </tr>`).join('')}
     </tbody></table>`;
