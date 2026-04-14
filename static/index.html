@@ -429,7 +429,7 @@ async function loadProducts(page) {
   tbody.innerHTML = products.map(p => `
     <tr>
       <td>${esc(p.pid)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${esc(p.name) || '—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${p.name ? `<a href="https://www.szhdy.com/cart.php?a=add&pid=${encodeURIComponent(p.pid)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(p.name)}</a>` : '—'}</td>
       <td>${esc(p.region) || '—'}</td>
       <td>${esc(p.price) || '—'}</td>
       <td>${esc(p.billingcycle_zh) || '—'}</td>
