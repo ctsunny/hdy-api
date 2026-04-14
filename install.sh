@@ -88,12 +88,12 @@ if [[ -d "${INSTALL_DIR}" ]]; then
     case "${_install_choice}" in
         1)
             info "执行升级安装..."
-            if [[ -f "${INSTALL_DIR}/upgrade.sh" ]]; then
-                bash "${INSTALL_DIR}/upgrade.sh" --source "https://github.com/ctsunny/hdy-api.git"
+            if [[ -f "${SCRIPT_DIR}/upgrade.sh" ]]; then
+                bash "${SCRIPT_DIR}/upgrade.sh" --source-dir "${SCRIPT_DIR}"
             else
                 UPGRADE_TMP=$(mktemp)
                 curl -fsSL "${GITHUB_RAW}/upgrade.sh" -o "${UPGRADE_TMP}"
-                bash "${UPGRADE_TMP}" --source "https://github.com/ctsunny/hdy-api.git"
+                bash "${UPGRADE_TMP}" --source-dir "${SCRIPT_DIR}"
                 rm -f "${UPGRADE_TMP}"
             fi
             exit 0
