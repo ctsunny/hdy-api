@@ -359,7 +359,8 @@ async function loadChanges(page) {
 async function clearChanges() {
   if (!confirm('确定要清空所有抓取记录吗？此操作不可恢复。')) return;
   const r = await api('DELETE', '/api/changes');
-  toast(r.ok ? '抓取记录已清空' : '清空失败', r.ok ? 'success' : 'error');
+  const d = await r.json().catch(() => ({}));
+  toast(r.ok ? '抓取记录已清空' : ('清空失败：' + (d.detail || d.message || r.status)), r.ok ? 'success' : 'error');
   if (r.ok) { _changesPage = 1; loadChanges(); loadDashChanges(); }
 }
 
@@ -414,8 +415,8 @@ async function saveConfig() {
 
 async function doSiteLogin() {
   const u = document.getElementById('site-user').value;
-  const p = document.getElementById('site-apikey').value;
-  const r = await api('POST', '/api/site_login', { username: u, api_key: p });
+  const apiKey = document.getElementById('site-apikey').value;
+  const r = await api('POST', '/api/site_login', { username: u, api_key: apiKey });
   const d = await r.json();
   toast(d.message, r.ok ? 'success' : 'error');
   if (r.ok) loadConfig();
