@@ -75,8 +75,7 @@ if [[ -n "${SOURCE_REPO}" ]]; then
 
     TMPDIR_GIT=$(mktemp -d)
     git clone --depth=1 "${SOURCE_REPO}" "${TMPDIR_GIT}/repo"
-    NEW_SOURCE="${TMPDIR_GIT}/repo/hdy-monitor"
-    [[ -d "${NEW_SOURCE}" ]] || NEW_SOURCE="${TMPDIR_GIT}/repo"
+    NEW_SOURCE="${TMPDIR_GIT}/repo"
 
 elif [[ -n "${SOURCE_DIR}" ]]; then
     # 从本地目录复制
