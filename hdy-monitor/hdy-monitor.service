@@ -1,0 +1,16 @@
+[Unit]
+Description=HDY Monitor - Inventory Crawler Service
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+Environment="HDY_CONFIG=__INSTALL_DIR__/config.json"
+Environment="HDY_DB_PATH=__INSTALL_DIR__/hdy_monitor.db"
+ExecStart=__VENV_PYTHON__ -m uvicorn main:app --host 0.0.0.0 --port __PORT__ --workers 1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
