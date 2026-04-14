@@ -18,8 +18,39 @@ die()     { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Detect script directory (where install.sh lives = source root)
+# When piped through bash (e.g. sudo bash <(curl ...)), BASH_SOURCE[0] is a
+# file descriptor path like /dev/fd/63 — not a real directory.  In that case
+# we download all project files from GitHub into a temporary directory.
 # ─────────────────────────────────────────────────────────────────────────────
+GITHUB_RAW="https://raw.githubusercontent.com/ctsunny/hdy-api/main"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ ! -f "${SCRIPT_DIR}/requirements.txt" ]]; then
+    info "检测到通过管道运行，从 GitHub 下载项目文件..."
+    SCRIPT_DIR="$(mktemp -d)"
+    trap 'rm -rf "${SCRIPT_DIR}"' EXIT
+
+    # List of files to fetch from the repository root
+    FILES=(
+        requirements.txt
+        main.py
+        models.py
+        database.py
+        crawler.py
+        notifier.py
+        "hdy-monitor.service"
+    )
+    for f in "${FILES[@]}"; do
+        curl -fsSL "${GITHUB_RAW}/${f}" -o "${SCRIPT_DIR}/${f}"
+    done
+
+    # static directory
+    mkdir -p "${SCRIPT_DIR}/static"
+    curl -fsSL "${GITHUB_RAW}/static/index.html" -o "${SCRIPT_DIR}/static/index.html"
+
+    success "项目文件下载完成"
+fi
+
 INSTALL_DIR="/opt/hdy-monitor"
 SERVICE_NAME="hdy-monitor"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
