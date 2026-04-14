@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -102,7 +102,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def _create_token() -> str:
-    expire = datetime.utcnow() + timedelta(hours=_TOKEN_EXPIRE_HOURS)
+    expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
     return jwt.encode({"sub": "admin", "exp": expire}, _SECRET_KEY, algorithm=_ALGORITHM)
 
 

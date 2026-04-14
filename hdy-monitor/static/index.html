@@ -346,7 +346,6 @@ async function showHistory(pid) {
 async function loadChanges(page) {
   if (page) _changesPage = page;
   const pid = document.getElementById('filter-pid').value;
-  const pidParam = pid ? '&pid=' + pid : '';  // NOTE: pid filter handled via history route
   let url = `/api/changes?page=${_changesPage}&page_size=50`;
   if (pid) url = `/api/products/${pid}/history?page=${_changesPage}&page_size=50`;
   const r = await api('GET', url);

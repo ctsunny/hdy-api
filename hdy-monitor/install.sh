@@ -60,13 +60,13 @@ info "生成随机端口、路径、账号密码..."
 PORT=$(( RANDOM % 55535 + 10000 ))
 
 # Random 8-char alphanumeric path prefix
-BASE_PATH="/$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
+BASE_PATH="/$(tr -dc 'a-z0-9' < /dev/urandom | head -c 8)"
 
 # Random 8-char username
-ADMIN_USER=$(cat /dev/urandom | tr -dc 'a-z' | head -c 8)
+ADMIN_USER=$(tr -dc 'a-z' < /dev/urandom | head -c 8)
 
 # Random 16-char password (letters + digits)
-ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)
+ADMIN_PASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16)
 
 # Random JWT secret key (32-char hex)
 SECRET_KEY=$(openssl rand -hex 32)

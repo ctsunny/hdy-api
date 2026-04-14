@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -121,7 +121,7 @@ async def upsert_product(
     Insert or update a product row.
     Returns (old_snapshot_or_None, list_of_changed_field_names).
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     raw_json = json.dumps(raw_data, ensure_ascii=False)
 
     async with aiosqlite.connect(DB_PATH) as db:
@@ -201,7 +201,7 @@ async def get_product(pid: int) -> Optional[dict[str, Any]]:
 async def insert_change(
     pid: int, field_name: str, old_value: Any, new_value: Any
 ) -> None:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """INSERT INTO change_log (pid, field_name, old_value, new_value, changed_at)
@@ -246,7 +246,7 @@ async def insert_notify_log(
     success: bool,
     pid: Optional[int] = None,
 ) -> None:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """INSERT INTO notify_log (pid, channel, message, sent_at, success)

@@ -60,7 +60,8 @@ async def _dingtalk(cfg: dict[str, Any], title: str, body: str) -> bool:
         ts = str(round(time.time() * 1000))
         sign_str = f"{ts}\n{secret}"
         sign = hmac.new(secret.encode(), sign_str.encode(), digestmod=hashlib.sha256).digest()
-        import base64, urllib.parse
+        import base64
+        import urllib.parse
         sign_b64 = urllib.parse.quote_plus(base64.b64encode(sign).decode())
         url = f"{webhook}&timestamp={ts}&sign={sign_b64}"
 
