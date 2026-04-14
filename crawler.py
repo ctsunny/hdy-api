@@ -9,7 +9,6 @@ Flow per PID:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import random
 from typing import Any, Optional
@@ -67,24 +66,25 @@ def _build_headers(token: Optional[str]) -> dict[str, str]:
     return h
 
 
+def _unwrap_body(body: Any) -> dict[str, Any]:
+    """Unwrap .data envelope from HDY API responses, returning the inner dict."""
+    if not isinstance(body, dict):
+        return {}
+    inner = body.get("data")
+    return inner if isinstance(inner, dict) else body
+
+
 def _is_success(body: Any) -> bool:
     """Check if HDY API response indicates success (status==200 or code==1)."""
     if not isinstance(body, dict):
         return False
-    data = body.get("data") if isinstance(body.get("data"), dict) else body
-    status = data.get("status") if isinstance(data, dict) else None
+    data = _unwrap_body(body)
+    status = data.get("status")
     if status is not None:
         return int(status) == 200
-    code = data.get("code") if isinstance(data, dict) else None
+    code = data.get("code")
     if code is not None:
         return int(code) in (1, 200)
-    # Fallback: top-level fields
-    top_status = body.get("status")
-    if top_status is not None:
-        return int(top_status) == 200
-    top_code = body.get("code")
-    if top_code is not None:
-        return int(top_code) in (1, 200)
     return False
 
 
@@ -118,7 +118,7 @@ def parse_product_config(body: dict[str, Any], pid: int) -> dict[str, Any]:
     data: dict[str, Any] = {"pid": pid}
 
     # Unwrap .data if present
-    inner = body.get("data") if isinstance(body.get("data"), dict) else body
+    inner = _unwrap_body(body)
     product = inner.get("product") if isinstance(inner, dict) else {}
     if not isinstance(product, dict):
         product = {}
@@ -174,11 +174,14 @@ async def try_add_to_cart(pid: int, billingcycle: Optional[str], token: Optional
             if body is not None and _is_success(body):
                 return "in_stock"
 
-            # Check for explicit out-of-stock messages in body
-            body_str = json.dumps(body, ensure_ascii=False).lower() if body else r.text.lower()
+            # Check for explicit out-of-stock messages in known message fields
             oos_keywords = ["out of stock", "sold out", "no stock", "库存不足", "缺货", "已售罄", "无货", "nostock"]
-            if any(kw in body_str for kw in oos_keywords):
-                return "out_of_stock"
+            if isinstance(body, dict):
+                msg_text = " ".join(
+                    str(body.get(k, "")) for k in ("message", "msg", "info", "error")
+                ).lower()
+                if any(kw in msg_text for kw in oos_keywords):
+                    return "out_of_stock"
 
             if r.status_code in (200, 201) and body is not None:
                 return "out_of_stock"

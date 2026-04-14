@@ -156,9 +156,12 @@ async def site_login(req: SiteLoginRequest) -> JSONResponse:
             except Exception:
                 pass
 
-            # JWT is in response.data.jwt or response.jwt
-            data = body.get("data") if isinstance(body.get("data"), dict) else body
-            jwt_token: str = data.get("jwt", "") if isinstance(data, dict) else ""
+            # JWT is in response.data.jwt (preferred) or response.jwt
+            body_data = body.get("data")
+            jwt_token: str = (
+                body_data.get("jwt", "") if isinstance(body_data, dict)
+                else body.get("jwt", "")
+            )
 
             if r.status_code == 200 and jwt_token:
                 await database.update_config(login_token=jwt_token)
