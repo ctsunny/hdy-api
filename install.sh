@@ -84,7 +84,7 @@ if [[ -d "${INSTALL_DIR}" ]]; then
     echo -e "  ${CYAN}2.${NC}  重新安装（清除旧数据，全新安装）"
     echo -e "  ${CYAN}0.${NC}  取消"
     echo ""
-    read -rp "  请输入选项 [0-2]: " _install_choice
+    read -rp "  请输入选项 [0-2]: " _install_choice </dev/tty
     case "${_install_choice}" in
         1)
             info "执行升级安装..."
