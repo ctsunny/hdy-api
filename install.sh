@@ -18,14 +18,22 @@ die()     { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Detect script directory (where install.sh lives = source root)
-# When piped through bash (e.g. sudo bash <(curl ...)), BASH_SOURCE[0] is a
-# file descriptor path like /dev/fd/63 — not a real directory.  In that case
-# we download all project files from GitHub into a temporary directory.
+# When piped through bash (curl ... | bash) or run as a temp file descriptor,
+# BASH_SOURCE[0] may be empty, "bash", "/dev/fd/N", or "/proc/self/fd/N".
+# In all such cases we download all project files from GitHub.
 # ─────────────────────────────────────────────────────────────────────────────
 GITHUB_RAW="https://raw.githubusercontent.com/ctsunny/hdy-api/main"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ ! -f "${SCRIPT_DIR}/requirements.txt" ]]; then
+_src="${BASH_SOURCE[0]:-}"
+_dir=""
+if [[ -n "${_src}" ]] \
+   && [[ "${_src}" != "bash" ]] \
+   && [[ "${_src}" != */dev/fd/* ]] \
+   && [[ "${_src}" != */proc/*/fd/* ]]; then
+    _dir="$(cd "$(dirname "${_src}")" 2>/dev/null && pwd)" || true
+fi
+
+if [[ -z "${_dir}" ]] || [[ ! -f "${_dir}/requirements.txt" ]]; then
     info "检测到通过管道运行，从 GitHub 下载项目文件..."
     SCRIPT_DIR="$(mktemp -d)"
     trap 'rm -rf "${SCRIPT_DIR}"' EXIT
@@ -38,6 +46,10 @@ if [[ ! -f "${SCRIPT_DIR}/requirements.txt" ]]; then
         database.py
         crawler.py
         notifier.py
+        configure.sh
+        upgrade.sh
+        uninstall.sh
+        hdy.sh
         "hdy-monitor.service"
     )
     for f in "${FILES[@]}"; do
@@ -49,6 +61,8 @@ if [[ ! -f "${SCRIPT_DIR}/requirements.txt" ]]; then
     curl -fsSL "${GITHUB_RAW}/static/index.html" -o "${SCRIPT_DIR}/static/index.html"
 
     success "项目文件下载完成"
+else
+    SCRIPT_DIR="${_dir}"
 fi
 
 INSTALL_DIR="/opt/hdy-monitor"
@@ -87,6 +101,10 @@ success "Python 依赖安装完成"
 # ─────────────────────────────────────────────────────────────────────────────
 info "生成随机端口、路径、账号密码..."
 
+# Temporarily disable pipefail: tr gets SIGPIPE when head closes the pipe,
+# which would make the whole pipeline return non-zero under pipefail.
+set +o pipefail
+
 # Random port 10000-65535
 PORT=$(( RANDOM % 55535 + 10000 ))
 
@@ -98,6 +116,8 @@ ADMIN_USER=$(tr -dc 'a-z' < /dev/urandom | head -c 8)
 
 # Random 16-char password (letters + digits)
 ADMIN_PASS=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16)
+
+set -o pipefail
 
 # Random JWT secret key (32-char hex)
 SECRET_KEY=$(openssl rand -hex 32)
@@ -152,6 +172,14 @@ systemctl restart "${SERVICE_NAME}"
 success "systemd 服务已启动"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Install hdy management command
+# ─────────────────────────────────────────────────────────────────────────────
+info "安装 hdy 管理命令..."
+cp "${INSTALL_DIR}/hdy.sh" /usr/local/bin/hdy
+chmod +x /usr/local/bin/hdy
+success "hdy 命令已安装 (输入 hdy 打开管理面板)"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Get server IP
 # ─────────────────────────────────────────────────────────────────────────────
 SERVER_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "YOUR_SERVER_IP")
@@ -195,7 +223,10 @@ echo -e "  🔑  密码:      ${YELLOW}${ADMIN_PASS}${NC}"
 echo ""
 echo -e "  📄  完整信息已保存至: ${CRED_FILE}"
 echo ""
+echo -e "  📋  管理面板:  输入 ${CYAN}hdy${NC} 打开交互式管理菜单"
+echo ""
 echo -e "  服务管理:"
+echo -e "    hdy                            # 打开管理菜单"
 echo -e "    journalctl -u hdy-monitor -f   # 查看日志"
 echo -e "    systemctl restart hdy-monitor  # 重启服务"
 echo ""
