@@ -258,6 +258,8 @@ async def update_config(body: ConfigUpdate) -> JSONResponse:
         update["start_pid"] = body.start_pid
     if body.end_pid is not None:
         update["end_pid"] = body.end_pid
+    if body.exec_start_pid is not None:
+        update["exec_start_pid"] = body.exec_start_pid
     if body.interval_ms is not None:
         update["interval_ms"] = max(500, body.interval_ms)
     if body.loop_enabled is not None:
@@ -292,6 +294,7 @@ async def crawler_status() -> CrawlerStatus:
     cfg = await database.get_config()
     status_obj.start_pid = cfg.get("start_pid")
     status_obj.end_pid = cfg.get("end_pid")
+    status_obj.exec_start_pid = cfg.get("exec_start_pid")
     status_obj.loop_enabled = cfg.get("loop_enabled", False)
     return status_obj
 

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS config (
     id               INTEGER PRIMARY KEY CHECK (id = 1),
     start_pid        INTEGER DEFAULT 1150,
     end_pid          INTEGER DEFAULT 1200,
+    exec_start_pid   INTEGER DEFAULT NULL,
     interval_ms      INTEGER DEFAULT 1500,
     loop_enabled     INTEGER DEFAULT 0,
     login_cookie     TEXT,
@@ -85,6 +86,8 @@ async def init_db() -> None:
             cols = {row[1] async for row in cur}
         if "login_token" not in cols:
             await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
+        if "exec_start_pid" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN exec_start_pid INTEGER DEFAULT NULL")
         async with db.execute("PRAGMA table_info(products)") as cur:
             prod_cols = {row[1] async for row in cur}
         if "region" not in prod_cols:
@@ -222,8 +225,8 @@ async def get_products(
     params: list[Any] = []
 
     if region:
-        conditions.append("region = ?")
-        params.append(region)
+        conditions.append("region LIKE ?")
+        params.append(f"%{region}%")
     if stock_status:
         conditions.append("stock_status = ?")
         params.append(stock_status)
@@ -260,8 +263,8 @@ async def count_products(
     params: list[Any] = []
 
     if region:
-        conditions.append("region = ?")
-        params.append(region)
+        conditions.append("region LIKE ?")
+        params.append(f"%{region}%")
     if stock_status:
         conditions.append("stock_status = ?")
         params.append(stock_status)

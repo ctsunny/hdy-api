@@ -223,12 +223,18 @@ async def _crawl_loop() -> None:
             cfg = await database.get_config()
             start_pid: int = cfg.get("start_pid", 1150)
             end_pid: int = cfg.get("end_pid", 1200)
+            exec_start_pid: int = cfg.get("exec_start_pid") or start_pid
             interval_ms: int = cfg.get("interval_ms", 1500)
             loop_enabled: bool = cfg.get("loop_enabled", False)
             token: Optional[str] = cfg.get("login_token")
             notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
 
-            for pid in range(start_pid, end_pid + 1):
+            # Build PID list: exec_start_pid → end_pid, then start_pid → exec_start_pid-1
+            pids = list(range(exec_start_pid, end_pid + 1))
+            if exec_start_pid > start_pid:
+                pids += list(range(start_pid, exec_start_pid))
+
+            for pid in pids:
                 if not state.running:
                     break
 

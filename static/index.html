@@ -143,10 +143,8 @@
     <!-- Filter Panel -->
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
       <div class="form-group">
-        <label>地区</label>
-        <select id="filter-region" style="width:140px;" onchange="loadProducts(1)">
-          <option value="">全部</option>
-        </select>
+        <label>地区关键词</label>
+        <input type="text" id="filter-region" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
         <label>库存状态</label>
@@ -177,7 +175,7 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>PID</th><th>名称</th><th>地区</th><th>价格</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
+      <thead><tr><th>PID</th><th>名称</th><th>价格</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
       <tbody id="products-body"></tbody>
     </table>
     <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
@@ -208,8 +206,9 @@
   <div class="card">
     <h2>爬取设置</h2>
     <div class="form-row">
-      <div class="form-group"><label>起始 PID</label><input type="number" id="cfg-start" value="1150"></div>
+      <div class="form-group"><label>起始 PID (范围)</label><input type="number" id="cfg-start" value="1150"></div>
       <div class="form-group"><label>结束 PID</label><input type="number" id="cfg-end" value="1200"></div>
+      <div class="form-group"><label>执行起始 PID</label><input type="number" id="cfg-exec-start" placeholder="默认同起始 PID"></div>
       <div class="form-group"><label>间隔(ms)</label><input type="number" id="cfg-interval" value="1500"></div>
       <div class="form-group"><label>循环模式</label>
         <select id="cfg-loop"><option value="false">关闭</option><option value="true">开启</option></select>
@@ -396,11 +395,8 @@ async function loadProductFilterOptions() {
     const r = await api('GET', '/api/products/filter_options');
     if (!r.ok) return;
     const opts = await r.json();
-    const regionSel = document.getElementById('filter-region');
     const cycleSel = document.getElementById('filter-cycle');
-    const curRegion = regionSel.value;
     const curCycle = cycleSel.value;
-    regionSel.innerHTML = '<option value="">全部</option>' + (opts.regions || []).map(v => `<option value="${esc(v)}"${v===curRegion?' selected':''}>${esc(v)}</option>`).join('');
     cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
   } catch(e) {}
 }
@@ -429,8 +425,7 @@ async function loadProducts(page) {
   tbody.innerHTML = products.map(p => `
     <tr>
       <td>${esc(p.pid)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${p.name ? `<a href="https://www.szhdy.com/cart.php?a=add&pid=${encodeURIComponent(p.pid)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(p.name)}</a>` : '—'}</td>
-      <td>${esc(p.region) || '—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${p.name ? `<a href="https://www.szhdy.com/cart?action=configureproduct&pid=${encodeURIComponent(p.pid)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(p.name)}</a>` : '—'}</td>
       <td>${esc(p.price) || '—'}</td>
       <td>${esc(p.billingcycle_zh) || '—'}</td>
       <td>${stockBadge(p.stock_status)}</td>
@@ -535,6 +530,7 @@ async function loadConfig() {
   const c = await r.json();
   document.getElementById('cfg-start').value = c.start_pid || 1150;
   document.getElementById('cfg-end').value = c.end_pid || 1200;
+  document.getElementById('cfg-exec-start').value = c.exec_start_pid || '';
   document.getElementById('cfg-interval').value = c.interval_ms || 1500;
   document.getElementById('cfg-loop').value = c.loop_enabled ? 'true' : 'false';
   const cs = document.getElementById('cookie-status');
@@ -550,6 +546,8 @@ async function saveConfig() {
     interval_ms: parseInt(document.getElementById('cfg-interval').value),
     loop_enabled: document.getElementById('cfg-loop').value === 'true',
   };
+  const execStartVal = document.getElementById('cfg-exec-start').value;
+  if (execStartVal) body.exec_start_pid = parseInt(execStartVal);
   const r = await api('PUT', '/api/config', body);
   toast(r.ok ? '配置已保存' : '保存失败', r.ok ? 'success' : 'error');
 }
