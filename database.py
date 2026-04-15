@@ -412,7 +412,7 @@ async def add_site_account(label: str, username: str, api_key: str, jwt_token: s
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
             "INSERT INTO site_accounts (label, username, api_key, jwt_token, is_active, created_at) VALUES (?,?,?,?,?,?)",
-            (label, username, api_key, jwt_token, False, now),
+            (label, username, api_key, jwt_token, 0, now),
         )
         await db.commit()
         return cur.lastrowid  # type: ignore[return-value]

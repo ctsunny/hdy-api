@@ -44,7 +44,7 @@ AUTH_ERROR_KEYWORDS = (
     "身份验证",
     "认证",
 )
-# Refresh token every 15 minutes to reduce session-expiry impact without frequent re-login.
+# Refresh token every 15 minutes to reduce session expiry impact without frequent re-login.
 KEEPALIVE_INTERVAL_SEC = 15 * 60
 
 # ---------------------------------------------------------------------------
@@ -306,8 +306,9 @@ async def try_add_to_cart(pid: int, billingcycle: Optional[str], token: Optional
                     return "out_of_stock"
 
             if r.status_code in (200, 201) and body is not None:
-                # Do not assume out_of_stock on generic non-success payloads:
-                # these often include transient/auth/session edge cases and can cause false alerts.
+                # Do not assume out_of_stock on generic non-success payloads.
+                # Real-world responses here include login-expired hints, anti-bot challenges,
+                # and temporary backend errors with HTTP 200, which previously caused false "无货" alerts.
                 return "unknown"
 
             return "unknown"
