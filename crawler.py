@@ -150,16 +150,19 @@ def _to_float_price(price: Any) -> Optional[float]:
     )
     try:
         return float(cleaned)
-    except Exception:
+    except ValueError:
         return None
 
 
 def _is_monthly_cycle(billingcycle: Any, billingcycle_zh: Any) -> bool:
-    en = str(billingcycle or "").lower()
-    zh = str(billingcycle_zh or "")
+    billing_cycle_en = str(billingcycle or "").lower()
+    billing_cycle_zh = str(billingcycle_zh or "")
     monthly_en_keys = ("monthly", "month")
     monthly_zh_keys = ("月", "月付", "月租")
-    return any(k in en for k in monthly_en_keys) or any(k in zh for k in monthly_zh_keys)
+    return (
+        any(k in billing_cycle_en for k in monthly_en_keys)
+        or any(k in billing_cycle_zh for k in monthly_zh_keys)
+    )
 
 
 def _in_price_range(price: Optional[float], pmin: Optional[float], pmax: Optional[float]) -> bool:
