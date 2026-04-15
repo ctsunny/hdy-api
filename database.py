@@ -474,6 +474,11 @@ async def update_site_account_token(account_id: int, jwt_token: str, activate: b
             await db.execute("UPDATE site_accounts SET is_active=1 WHERE id=?", (account_id,))
             await db.execute("UPDATE config SET login_token=? WHERE id=1", (jwt_token,))
         await db.execute("UPDATE site_accounts SET jwt_token=? WHERE id=?", (jwt_token, account_id))
+        if not activate:
+            async with db.execute("SELECT is_active FROM site_accounts WHERE id=?", (account_id,)) as cur:
+                row = await cur.fetchone()
+            if row and row[0]:
+                await db.execute("UPDATE config SET login_token=? WHERE id=1", (jwt_token,))
         await db.commit()
 
 
