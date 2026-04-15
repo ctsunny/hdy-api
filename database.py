@@ -234,6 +234,7 @@ async def get_products(
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
     price_max: Optional[float] = None,
+    sort_price: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     conditions: list[str] = []
     params: list[Any] = []
@@ -255,12 +256,16 @@ async def get_products(
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    order_clause = "pid"
+    if sort_price in ("asc", "desc"):
+        price_expr = "CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL)"
+        order_clause = f"CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END, {price_expr} {sort_price.upper()}, pid"
     params.extend([limit, offset])
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"SELECT * FROM products {where_clause} ORDER BY pid LIMIT ? OFFSET ?", params
+            f"SELECT * FROM products {where_clause} ORDER BY {order_clause} LIMIT ? OFFSET ?", params
         ) as cur:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
