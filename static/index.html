@@ -409,9 +409,17 @@ function updatePriceSortHeader() {
 }
 
 function togglePriceSort() {
-  if (_prodPriceSort === '') _prodPriceSort = 'asc';
-  else if (_prodPriceSort === 'asc') _prodPriceSort = 'desc';
-  else _prodPriceSort = '';
+  switch (_prodPriceSort) {
+    case '':
+      _prodPriceSort = 'asc';
+      break;
+    case 'asc':
+      _prodPriceSort = 'desc';
+      break;
+    default:
+      _prodPriceSort = '';
+      break;
+  }
   updatePriceSortHeader();
   loadProducts(1);
 }

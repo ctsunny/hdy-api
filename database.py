@@ -263,7 +263,7 @@ async def get_products(
         "asc": PRICE_ORDER_EXPR_BASE + " ASC, pid",
         "desc": PRICE_ORDER_EXPR_BASE + " DESC, pid",
     }
-    order_clause = sort_order_map.get(sort_price, "pid")
+    order_clause = sort_order_map.get(sort_price, "pid ASC")
     params.extend([limit, offset])
 
     async with aiosqlite.connect(DB_PATH) as db:
