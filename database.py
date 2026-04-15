@@ -13,6 +13,7 @@ import aiosqlite
 DB_PATH = os.environ.get("HDY_DB_PATH", str(Path(__file__).parent / "hdy_monitor.db"))
 PRICE_NUMERIC_EXPR = "CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL)"
 PRICE_EMPTY_LAST_EXPR = "CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END"
+PRICE_ORDER_EXPR_BASE = PRICE_EMPTY_LAST_EXPR + ", " + PRICE_NUMERIC_EXPR
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -251,18 +252,18 @@ async def get_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append(f"{PRICE_NUMERIC_EXPR} >= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append(f"{PRICE_NUMERIC_EXPR} <= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-    order_clause = "pid"
-    if sort_price == "asc":
-        order_clause = f"{PRICE_EMPTY_LAST_EXPR}, {PRICE_NUMERIC_EXPR} ASC, pid"
-    elif sort_price == "desc":
-        order_clause = f"{PRICE_EMPTY_LAST_EXPR}, {PRICE_NUMERIC_EXPR} DESC, pid"
+    sort_order_map = {
+        "asc": PRICE_ORDER_EXPR_BASE + " ASC, pid",
+        "desc": PRICE_ORDER_EXPR_BASE + " DESC, pid",
+    }
+    order_clause = sort_order_map.get(sort_price, "pid")
     params.extend([limit, offset])
 
     async with aiosqlite.connect(DB_PATH) as db:
@@ -294,10 +295,10 @@ async def count_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append(f"{PRICE_NUMERIC_EXPR} >= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append(f"{PRICE_NUMERIC_EXPR} <= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
