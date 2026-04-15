@@ -556,7 +556,7 @@ async def _process_pid(
     )
     product_url = f"{BASE_URL}/cart?action=configureproduct&pid={pid}"
     title = f"[库存监控] PID {pid} {name or ''}"
-    cycle_value = billingcycle_zh if billingcycle_zh is not None else billingcycle
+    cycle_value = billingcycle_zh or billingcycle
     cycle_suffix = ""
     cycle_display = str(cycle_value or "").strip()
     if cycle_display:
