@@ -56,7 +56,11 @@ CREATE TABLE IF NOT EXISTS config (
     loop_enabled     INTEGER DEFAULT 0,
     login_cookie     TEXT,
     login_token      TEXT,
-    notify_channels  TEXT DEFAULT '{}'
+    notify_channels  TEXT DEFAULT '{}',
+    notify_price_min REAL DEFAULT NULL,
+    notify_price_max REAL DEFAULT NULL,
+    notify_monthly_price_min REAL DEFAULT NULL,
+    notify_monthly_price_max REAL DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS notify_log (
@@ -93,6 +97,14 @@ async def init_db() -> None:
             await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
         if "exec_start_pid" not in cols:
             await db.execute("ALTER TABLE config ADD COLUMN exec_start_pid INTEGER DEFAULT NULL")
+        if "notify_price_min" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN notify_price_min REAL DEFAULT NULL")
+        if "notify_price_max" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN notify_price_max REAL DEFAULT NULL")
+        if "notify_monthly_price_min" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_min REAL DEFAULT NULL")
+        if "notify_monthly_price_max" not in cols:
+            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_max REAL DEFAULT NULL")
         async with db.execute("PRAGMA table_info(products)") as cur:
             prod_cols = {row[1] async for row in cur}
         if "region" not in prod_cols:

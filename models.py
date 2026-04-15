@@ -81,6 +81,10 @@ class ConfigUpdate(BaseModel):
     loop_enabled: Optional[bool] = None
     login_cookie: Optional[str] = None
     notify_channels: Optional[dict[str, Any]] = None
+    notify_price_min: Optional[float] = None
+    notify_price_max: Optional[float] = None
+    notify_monthly_price_min: Optional[float] = None
+    notify_monthly_price_max: Optional[float] = None
 
 
 class CrawlerStatus(BaseModel):

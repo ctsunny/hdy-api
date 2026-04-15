@@ -254,20 +254,29 @@ async def get_config() -> JSONResponse:
 @app.put(f"{BASE_PATH}/api/config", dependencies=[Depends(require_auth)])
 async def update_config(body: ConfigUpdate) -> JSONResponse:
     update: dict[str, Any] = {}
-    if body.start_pid is not None:
+    provided = getattr(body, "model_fields_set", set()) or getattr(body, "__fields_set__", set())
+    if "start_pid" in provided and body.start_pid is not None:
         update["start_pid"] = body.start_pid
-    if body.end_pid is not None:
+    if "end_pid" in provided and body.end_pid is not None:
         update["end_pid"] = body.end_pid
-    if body.exec_start_pid is not None:
+    if "exec_start_pid" in provided:
         update["exec_start_pid"] = body.exec_start_pid
-    if body.interval_ms is not None:
+    if "interval_ms" in provided and body.interval_ms is not None:
         update["interval_ms"] = max(500, body.interval_ms)
-    if body.loop_enabled is not None:
+    if "loop_enabled" in provided and body.loop_enabled is not None:
         update["loop_enabled"] = body.loop_enabled
-    if body.login_cookie is not None:
+    if "login_cookie" in provided:
         update["login_cookie"] = body.login_cookie
-    if body.notify_channels is not None:
+    if "notify_channels" in provided and body.notify_channels is not None:
         update["notify_channels"] = body.notify_channels
+    if "notify_price_min" in provided:
+        update["notify_price_min"] = body.notify_price_min
+    if "notify_price_max" in provided:
+        update["notify_price_max"] = body.notify_price_max
+    if "notify_monthly_price_min" in provided:
+        update["notify_monthly_price_min"] = body.notify_monthly_price_min
+    if "notify_monthly_price_max" in provided:
+        update["notify_monthly_price_max"] = body.notify_monthly_price_max
     await database.update_config(**update)
     return JSONResponse({"status": "ok"})
 

@@ -215,6 +215,10 @@
       <div class="form-group"><label>循环模式</label>
         <select id="cfg-loop"><option value="false">关闭</option><option value="true">开启</option></select>
       </div>
+      <div class="form-group"><label for="cfg-notify-price-min">通知最低价</label><input type="number" step="0.01" id="cfg-notify-price-min" placeholder="不限制"></div>
+      <div class="form-group"><label for="cfg-notify-price-max">通知最高价</label><input type="number" step="0.01" id="cfg-notify-price-max" placeholder="不限制"></div>
+      <div class="form-group"><label for="cfg-notify-monthly-price-min">月租最低价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-min" placeholder="月租单独规则"></div>
+      <div class="form-group"><label for="cfg-notify-monthly-price-max">月租最高价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-max" placeholder="月租单独规则"></div>
     </div>
     <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
   </div>
@@ -579,6 +583,10 @@ async function loadConfig() {
   document.getElementById('cfg-exec-start').value = c.exec_start_pid || '';
   document.getElementById('cfg-interval').value = c.interval_ms || 1500;
   document.getElementById('cfg-loop').value = c.loop_enabled ? 'true' : 'false';
+  document.getElementById('cfg-notify-price-min').value = c.notify_price_min ?? '';
+  document.getElementById('cfg-notify-price-max').value = c.notify_price_max ?? '';
+  document.getElementById('cfg-notify-monthly-price-min').value = c.notify_monthly_price_min ?? '';
+  document.getElementById('cfg-notify-monthly-price-max').value = c.notify_monthly_price_max ?? '';
   const cs = document.getElementById('cookie-status');
   cs.textContent = c.has_token ? '✅ Token 已保存' : (c.has_cookie ? '✅ Cookie 已保存' : '⚠️ 未登录');
   cs.style.color = (c.has_token || c.has_cookie) ? 'var(--success)' : 'var(--warn)';
@@ -586,14 +594,49 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
+  const startPid = parseInt(document.getElementById('cfg-start').value);
+  const endPid = parseInt(document.getElementById('cfg-end').value);
+  const intervalMs = parseInt(document.getElementById('cfg-interval').value);
+  if ([startPid, endPid, intervalMs].some(v => Number.isNaN(v))) {
+    return toast('请填写有效的 PID 与间隔数字', 'error');
+  }
   const body = {
-    start_pid: parseInt(document.getElementById('cfg-start').value),
-    end_pid: parseInt(document.getElementById('cfg-end').value),
-    interval_ms: parseInt(document.getElementById('cfg-interval').value),
+    start_pid: startPid,
+    end_pid: endPid,
+    interval_ms: intervalMs,
     loop_enabled: document.getElementById('cfg-loop').value === 'true',
   };
   const execStartVal = document.getElementById('cfg-exec-start').value;
-  if (execStartVal) body.exec_start_pid = parseInt(execStartVal);
+  if (execStartVal) {
+    const execStartPid = parseInt(execStartVal);
+    if (Number.isNaN(execStartPid)) return toast('执行起始 PID 必须是数字', 'error');
+    body.exec_start_pid = execStartPid;
+  }
+  else body.exec_start_pid = null;
+  const notifyPriceMin = document.getElementById('cfg-notify-price-min').value;
+  const notifyPriceMax = document.getElementById('cfg-notify-price-max').value;
+  const notifyMonthlyPriceMin = document.getElementById('cfg-notify-monthly-price-min').value;
+  const notifyMonthlyPriceMax = document.getElementById('cfg-notify-monthly-price-max').value;
+  const parseOptionalNumber = (val, label) => {
+    if (val === '') return null;
+    const num = parseFloat(val);
+    if (!Number.isFinite(num)) {
+      toast(`${label}必须是有效数字`, 'error');
+      return undefined;
+    }
+    if (num < 0) {
+      toast(`${label}不能为负数`, 'error');
+      return undefined;
+    }
+    return num;
+  };
+  body.notify_price_min = parseOptionalNumber(notifyPriceMin, '通知最低价');
+  body.notify_price_max = parseOptionalNumber(notifyPriceMax, '通知最高价');
+  body.notify_monthly_price_min = parseOptionalNumber(notifyMonthlyPriceMin, '月租最低价');
+  body.notify_monthly_price_max = parseOptionalNumber(notifyMonthlyPriceMax, '月租最高价');
+  if ([body.notify_price_min, body.notify_price_max, body.notify_monthly_price_min, body.notify_monthly_price_max].some(v => v === undefined)) {
+    return;
+  }
   const r = await api('PUT', '/api/config', body);
   toast(r.ok ? '配置已保存' : '保存失败', r.ok ? 'success' : 'error');
 }
