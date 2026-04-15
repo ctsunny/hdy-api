@@ -556,8 +556,11 @@ async def _process_pid(
     )
     product_url = f"{BASE_URL}/cart?action=configureproduct&pid={pid}"
     title = f"[库存监控] PID {pid} {name or ''}"
+    cycle_display = str(billingcycle_zh or billingcycle or "").strip()
+    if cycle_display:
+        cycle_display = f" /{cycle_display}"
     body_text = (
-        f"商品价格: {_fmt_val(price, 'price')}\n"
+        f"商品价格: {_fmt_val(price, 'price')}{cycle_display}\n"
         f"直达链接: {product_url}\n"
         f"变化字段:\n{changes_text}"
     )
