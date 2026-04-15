@@ -11,6 +11,7 @@ from typing import Any, Optional
 import aiosqlite
 
 DB_PATH = os.environ.get("HDY_DB_PATH", str(Path(__file__).parent / "hdy_monitor.db"))
+_PRICE_NUMERIC_EXPR = "CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL)"
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -249,17 +250,18 @@ async def get_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        conditions.append(f"{_PRICE_NUMERIC_EXPR} >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        conditions.append(f"{_PRICE_NUMERIC_EXPR} <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     order_clause = "pid"
-    if sort_price in ("asc", "desc"):
-        price_expr = "CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL)"
-        order_clause = f"CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END, {price_expr} {sort_price.upper()}, pid"
+    if sort_price == "asc":
+        order_clause = f"CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END, {_PRICE_NUMERIC_EXPR} ASC, pid"
+    elif sort_price == "desc":
+        order_clause = f"CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END, {_PRICE_NUMERIC_EXPR} DESC, pid"
     params.extend([limit, offset])
 
     async with aiosqlite.connect(DB_PATH) as db:
@@ -291,10 +293,10 @@ async def count_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        conditions.append(f"{_PRICE_NUMERIC_EXPR} >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        conditions.append(f"{_PRICE_NUMERIC_EXPR} <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
