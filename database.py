@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS site_accounts (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     label       TEXT,
     username    TEXT NOT NULL,
+    api_key     TEXT,
     jwt_token   TEXT,
     is_active   INTEGER DEFAULT 0,
     created_at  TEXT
@@ -96,6 +97,10 @@ async def init_db() -> None:
             await db.execute("ALTER TABLE products ADD COLUMN billingcycle_zh TEXT")
         if "cycles_json" not in prod_cols:
             await db.execute("ALTER TABLE products ADD COLUMN cycles_json TEXT")
+        async with db.execute("PRAGMA table_info(site_accounts)") as cur:
+            account_cols = {row[1] async for row in cur}
+        if "api_key" not in account_cols:
+            await db.execute("ALTER TABLE site_accounts ADD COLUMN api_key TEXT")
         await db.commit()
 
 
@@ -402,12 +407,12 @@ async def get_site_accounts() -> list[dict[str, Any]]:
             return [dict(r) for r in rows]
 
 
-async def add_site_account(label: str, username: str, jwt_token: str) -> int:
+async def add_site_account(label: str, username: str, api_key: str, jwt_token: str) -> int:
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
-            "INSERT INTO site_accounts (label, username, jwt_token, is_active, created_at) VALUES (?,?,?,0,?)",
-            (label, username, jwt_token, now),
+            "INSERT INTO site_accounts (label, username, api_key, jwt_token, is_active, created_at) VALUES (?,?,?,?,0,?)",
+            (label, username, api_key, jwt_token, now),
         )
         await db.commit()
         return cur.lastrowid  # type: ignore[return-value]
@@ -415,7 +420,25 @@ async def add_site_account(label: str, username: str, jwt_token: str) -> int:
 
 async def delete_site_account(account_id: int) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
+        was_active = False
+        async with db.execute("SELECT is_active FROM site_accounts WHERE id=?", (account_id,)) as cur:
+            row = await cur.fetchone()
+            was_active = bool(row and row[0])
+
         await db.execute("DELETE FROM site_accounts WHERE id=?", (account_id,))
+
+        if was_active:
+            async with db.execute(
+                "SELECT id, jwt_token FROM site_accounts ORDER BY is_active DESC, id LIMIT 1"
+            ) as cur:
+                next_row = await cur.fetchone()
+
+            await db.execute("UPDATE site_accounts SET is_active=0")
+            if next_row and next_row[0]:
+                await db.execute("UPDATE site_accounts SET is_active=1 WHERE id=?", (next_row[0],))
+                await db.execute("UPDATE config SET login_token=? WHERE id=1", (next_row[1] or "",))
+            else:
+                await db.execute("UPDATE config SET login_token='' WHERE id=1")
         await db.commit()
 
 
@@ -432,6 +455,26 @@ async def set_active_site_account(account_id: int) -> None:
         if row and row[0]:
             await db.execute("UPDATE config SET login_token=? WHERE id=1", (row[0],))
             await db.commit()
+
+
+async def get_site_accounts_credentials() -> list[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, label, username, api_key, jwt_token, is_active, created_at FROM site_accounts ORDER BY is_active DESC, id"
+        ) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def update_site_account_token(account_id: int, jwt_token: str, activate: bool = False) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        if activate:
+            await db.execute("UPDATE site_accounts SET is_active=0")
+            await db.execute("UPDATE site_accounts SET is_active=1 WHERE id=?", (account_id,))
+            await db.execute("UPDATE config SET login_token=? WHERE id=1", (jwt_token,))
+        await db.execute("UPDATE site_accounts SET jwt_token=? WHERE id=?", (jwt_token, account_id))
+        await db.commit()
 
 
 async def get_active_site_account_token() -> Optional[str]:

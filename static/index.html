@@ -717,7 +717,10 @@ async function testChannel(key) {
 // ── Utils ─────────────────────────────────────────────────────────────────
 function fmtDate(s) {
   if (!s) return '—';
-  const d = new Date(s + (s.endsWith('Z') ? '' : 'Z'));
+  const str = String(s);
+  const hasTz = /(?:Z|[+-]\d{2}:\d{2})$/.test(str);
+  const d = new Date(hasTz ? str : (str + 'Z'));
+  if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 }
 
