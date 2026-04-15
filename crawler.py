@@ -135,6 +135,45 @@ def _extract_jwt_token(body: dict[str, Any]) -> str:
     return body_data.get("jwt", "") if isinstance(body_data, dict) else body.get("jwt", "")
 
 
+def _to_float_price(price: Any) -> Optional[float]:
+    if price is None:
+        return None
+    s = str(price).strip()
+    if not s:
+        return None
+    cleaned = (
+        s.replace("¥", "")
+        .replace(",", "")
+        .replace("￥", "")
+        .replace("元", "")
+        .strip()
+    )
+    try:
+        return float(cleaned)
+    except Exception:
+        return None
+
+
+def _is_monthly_cycle(billingcycle: Any, billingcycle_zh: Any) -> bool:
+    en = str(billingcycle or "").lower()
+    zh = str(billingcycle_zh or "")
+    monthly_en_keys = ("monthly", "month")
+    monthly_zh_keys = ("月", "月付", "月租")
+    return any(k in en for k in monthly_en_keys) or any(k in zh for k in monthly_zh_keys)
+
+
+def _in_price_range(price: Optional[float], pmin: Optional[float], pmax: Optional[float]) -> bool:
+    if pmin is None and pmax is None:
+        return True
+    if price is None:
+        return False
+    if pmin is not None and price < pmin:
+        return False
+    if pmax is not None and price > pmax:
+        return False
+    return True
+
+
 async def _login_szhdy(username: str, api_key: str) -> Optional[str]:
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
@@ -339,6 +378,20 @@ async def _crawl_loop() -> None:
             loop_enabled: bool = cfg.get("loop_enabled", False)
             token: Optional[str] = cfg.get("login_token")
             notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
+            notify_price_min = cfg.get("notify_price_min")
+            notify_price_max = cfg.get("notify_price_max")
+            notify_monthly_price_min = cfg.get("notify_monthly_price_min")
+            notify_monthly_price_max = cfg.get("notify_monthly_price_max")
+            notify_filter_cfg = {
+                "notify_price_min": float(notify_price_min) if notify_price_min is not None else None,
+                "notify_price_max": float(notify_price_max) if notify_price_max is not None else None,
+                "notify_monthly_price_min": (
+                    float(notify_monthly_price_min) if notify_monthly_price_min is not None else None
+                ),
+                "notify_monthly_price_max": (
+                    float(notify_monthly_price_max) if notify_monthly_price_max is not None else None
+                ),
+            }
 
             now_ts = time.time()
             if state.auth_error_detected or (now_ts - state.last_keepalive_at >= KEEPALIVE_INTERVAL_SEC):
@@ -357,7 +410,7 @@ async def _crawl_loop() -> None:
 
                 state.current_pid = pid
                 try:
-                    await _process_pid(pid, token, notify_channels)
+                    await _process_pid(pid, token, notify_channels, notify_filter_cfg)
                 except Exception as e:
                     logger.error("Error processing pid=%s: %s", pid, e)
 
@@ -381,6 +434,7 @@ async def _process_pid(
     pid: int,
     token: Optional[str],
     notify_channels: dict[str, Any],
+    notify_filter_cfg: dict[str, Optional[float]],
 ) -> None:
     body = await fetch_product_config(pid, token)
     if body is None:
@@ -440,6 +494,26 @@ async def _process_pid(
     if not notify_fields or state.notify_paused:
         return
 
+    price_float = _to_float_price(price)
+    is_monthly = _is_monthly_cycle(billingcycle, billingcycle_zh)
+    global_min = notify_filter_cfg.get("notify_price_min")
+    global_max = notify_filter_cfg.get("notify_price_max")
+    monthly_min = notify_filter_cfg.get("notify_monthly_price_min")
+    monthly_max = notify_filter_cfg.get("notify_monthly_price_max")
+    if is_monthly and (monthly_min is not None or monthly_max is not None):
+        if not _in_price_range(price_float, monthly_min, monthly_max):
+            logger.debug(
+                "Skip notify pid=%s due to monthly price filter price=%s range=[%s,%s]",
+                pid, price_float, monthly_min, monthly_max
+            )
+            return
+    elif not _in_price_range(price_float, global_min, global_max):
+        logger.debug(
+            "Skip notify pid=%s due to price filter price=%s range=[%s,%s]",
+            pid, price_float, global_min, global_max
+        )
+        return
+
     _FIELD_LABELS: dict[str, str] = {
         "name": "产品名",
         "price": "价格",
@@ -477,8 +551,13 @@ async def _process_pid(
         f"{_fmt_val(_new_lookup.get(f, raw_data.get(f)), f)}"
         for f in notify_fields
     )
+    product_url = f"{BASE_URL}/cart?action=configureproduct&pid={pid}"
     title = f"[库存监控] PID {pid} {name or ''}"
-    body_text = f"变化字段:\n{changes_text}"
+    body_text = (
+        f"商品价格: {_fmt_val(price, 'price')}\n"
+        f"直达链接: {product_url}\n"
+        f"变化字段:\n{changes_text}"
+    )
 
     await notifier.send_all(notify_channels, title=title, body=body_text, pid=pid)
 
