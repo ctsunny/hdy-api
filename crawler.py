@@ -44,6 +44,7 @@ AUTH_ERROR_KEYWORDS = (
     "身份验证",
     "认证",
 )
+# Refresh token every 15 minutes to reduce session-expiry impact without frequent re-login.
 KEEPALIVE_INTERVAL_SEC = 900
 
 # ---------------------------------------------------------------------------
@@ -108,6 +109,11 @@ def _is_auth_error_response(status_code: int, body: Any) -> bool:
         return True
     text = _extract_text_fields(body)
     return bool(text and any(k in text for k in AUTH_ERROR_KEYWORDS))
+
+
+def _mark_auth_error(pid: int, action: str) -> None:
+    state.auth_error_detected = True
+    logger.warning("Detected auth/session failure while %s pid=%s", action, pid)
 
 
 def _is_success(body: Any) -> bool:
@@ -194,8 +200,7 @@ async def fetch_product_config(pid: int, token: Optional[str]) -> Optional[dict[
                 try:
                     body = r.json()
                     if _is_auth_error_response(r.status_code, body):
-                        state.auth_error_detected = True
-                        logger.warning("Detected auth/session failure while reading pid=%s", pid)
+                        _mark_auth_error(pid, "reading")
                         return None
                     return body
                 except Exception:
@@ -206,8 +211,7 @@ async def fetch_product_config(pid: int, token: Optional[str]) -> Optional[dict[
                 except Exception:
                     body = None
                 if _is_auth_error_response(r.status_code, body):
-                    state.auth_error_detected = True
-                    logger.warning("Detected auth/session failure while reading pid=%s", pid)
+                    _mark_auth_error(pid, "reading")
     except Exception as e:
         logger.warning("fetch_product_config pid=%s error: %s", pid, e)
     return None
@@ -291,8 +295,7 @@ async def try_add_to_cart(pid: int, billingcycle: Optional[str], token: Optional
                 return "in_stock"
 
             if _is_auth_error_response(r.status_code, body):
-                state.auth_error_detected = True
-                logger.warning("Detected auth/session failure while add_to_cart pid=%s", pid)
+                _mark_auth_error(pid, "add_to_cart")
                 return "unknown"
 
             # Check for explicit out-of-stock messages in known message fields
