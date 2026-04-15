@@ -321,9 +321,11 @@ async def list_products(
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
     price_max: Optional[float] = None,
+    sort_price: Optional[str] = None,
 ) -> JSONResponse:
     page_size = min(max(page_size, 1), 200)
     offset = (page - 1) * page_size
+    sort_price = sort_price if sort_price in ("asc", "desc") else None
     products = await database.get_products(
         limit=page_size,
         offset=offset,
@@ -332,6 +334,7 @@ async def list_products(
         billingcycle=billingcycle,
         price_min=price_min,
         price_max=price_max,
+        sort_price=sort_price,
     )
     total = await database.count_products(
         name=name,

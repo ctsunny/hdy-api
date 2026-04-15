@@ -11,6 +11,10 @@ from typing import Any, Optional
 import aiosqlite
 
 DB_PATH = os.environ.get("HDY_DB_PATH", str(Path(__file__).parent / "hdy_monitor.db"))
+# Shared SQL snippets for converting and ordering product price values.
+PRICE_NUMERIC_EXPR = "CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL)"
+PRICE_EMPTY_LAST_EXPR = "CASE WHEN price IS NULL OR TRIM(price) = '' THEN 1 ELSE 0 END"
+PRICE_ORDER_EXPR_BASE = PRICE_EMPTY_LAST_EXPR + ", " + PRICE_NUMERIC_EXPR
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -234,6 +238,7 @@ async def get_products(
     billingcycle: Optional[str] = None,
     price_min: Optional[float] = None,
     price_max: Optional[float] = None,
+    sort_price: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     conditions: list[str] = []
     params: list[Any] = []
@@ -248,19 +253,25 @@ async def get_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    sort_order_map = {
+        # Use pid as a deterministic tiebreaker when prices are equal.
+        "asc": PRICE_ORDER_EXPR_BASE + " ASC, pid",
+        "desc": PRICE_ORDER_EXPR_BASE + " DESC, pid",
+    }
+    order_clause = sort_order_map.get(sort_price, "pid ASC")
     params.extend([limit, offset])
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"SELECT * FROM products {where_clause} ORDER BY pid LIMIT ? OFFSET ?", params
+            f"SELECT * FROM products {where_clause} ORDER BY {order_clause} LIMIT ? OFFSET ?", params
         ) as cur:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
@@ -286,10 +297,10 @@ async def count_products(
         conditions.append("billingcycle_zh = ?")
         params.append(billingcycle)
     if price_min is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) >= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " >= ?")
         params.append(price_min)
     if price_max is not None:
-        conditions.append("CAST(REPLACE(REPLACE(price, ',', ''), '¥', '') AS REAL) <= ?")
+        conditions.append(PRICE_NUMERIC_EXPR + " <= ?")
         params.append(price_max)
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""

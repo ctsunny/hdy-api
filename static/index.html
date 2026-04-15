@@ -38,6 +38,7 @@
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
   th { color: var(--muted); font-weight: 500; font-size: 12px; background: #13161f; }
+  th.sortable { cursor: pointer; user-select: none; }
   tr:hover td { background: #1e2130; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .badge-green { background: #003020; color: var(--success); }
@@ -176,7 +177,7 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>PID</th><th>名称</th><th>价格</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
+      <thead><tr><th>PID</th><th>名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()">价格 ↕</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
       <tbody id="products-body"></tbody>
     </table>
     <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
@@ -390,6 +391,7 @@ async function toggleNotifyPause() {
 // ── Products ───────────────────────────────────────────────────────────────
 let _prodPage = 1;
 let _prodDebounceTimer = null;
+let _prodPriceSort = '';
 
 function _debounceProducts() {
   clearTimeout(_prodDebounceTimer);
@@ -398,12 +400,38 @@ function _debounceProducts() {
 
 function prodPageSizeChange() { loadProducts(1); }
 
+function updatePriceSortHeader() {
+  const el = document.getElementById('products-price-sort');
+  if (!el) return;
+  if (_prodPriceSort === 'asc') el.textContent = '价格 ↑';
+  else if (_prodPriceSort === 'desc') el.textContent = '价格 ↓';
+  else el.textContent = '价格 ↕';
+}
+
+function togglePriceSort() {
+  switch (_prodPriceSort) {
+    case '':
+      _prodPriceSort = 'asc';
+      break;
+    case 'asc':
+      _prodPriceSort = 'desc';
+      break;
+    default:
+      _prodPriceSort = '';
+      break;
+  }
+  updatePriceSortHeader();
+  loadProducts(1);
+}
+
 function clearProductFilters() {
   document.getElementById('filter-name').value = '';
   document.getElementById('filter-stock').value = '';
   document.getElementById('filter-cycle').value = '';
   document.getElementById('filter-price-min').value = '';
   document.getElementById('filter-price-max').value = '';
+  _prodPriceSort = '';
+  updatePriceSortHeader();
   loadProducts(1);
 }
 
@@ -433,6 +461,7 @@ async function loadProducts(page) {
   if (cycle) url += `&billingcycle=${encodeURIComponent(cycle)}`;
   if (priceMin) url += `&price_min=${priceMin}`;
   if (priceMax) url += `&price_max=${priceMax}`;
+  if (_prodPriceSort) url += `&sort_price=${_prodPriceSort}`;
 
   const r = await api('GET', url);
   if (!r.ok) return;
@@ -726,6 +755,7 @@ function fmtDate(s) {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 async function init() {
+  updatePriceSortHeader();
   await pollStatus();
   await loadDashChanges();
   _statusInterval = setInterval(async () => { await pollStatus(); await loadDashChanges(); }, 3000);
