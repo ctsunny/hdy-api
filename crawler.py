@@ -558,7 +558,7 @@ async def _process_pid(
     title = f"[库存监控] PID {pid} {name or ''}"
     cycle_value = billingcycle_zh or billingcycle
     cycle_suffix = ""
-    cycle_display = str(cycle_value or "").strip()
+    cycle_display = (cycle_value or "").strip()
     if cycle_display:
         cycle_suffix = f" /{cycle_display}"
     body_text = (
