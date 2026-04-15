@@ -213,7 +213,7 @@ async def create_site_account(req: SiteAccountCreate) -> JSONResponse:
 
             if r.status_code == 200 and jwt_token:
                 label = req.label or req.username
-                account_id = await database.add_site_account(label, req.username, jwt_token)
+                account_id = await database.add_site_account(label, req.username, req.api_key, jwt_token)
                 return JSONResponse({"status": "ok", "id": account_id, "message": "账号已保存"})
             else:
                 msg = body.get("msg") or body.get("message") or f"HTTP {r.status_code}"

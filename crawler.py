@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import random
+import time
 from typing import Any, Optional
 
 import httpx
@@ -32,6 +33,19 @@ HEADERS_BASE = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     "Referer": BASE_URL + "/",
 }
+AUTH_ERROR_KEYWORDS = (
+    "请先登录",
+    "登录",
+    "登录失效",
+    "unauthorized",
+    "token",
+    "jwt",
+    "auth",
+    "身份验证",
+    "认证",
+)
+# Refresh token every 15 minutes to reduce session expiry impact without frequent re-login.
+KEEPALIVE_INTERVAL_SEC = 15 * 60
 
 # ---------------------------------------------------------------------------
 # Global crawler state
@@ -43,6 +57,8 @@ class _State:
     checked_count: int = 0
     changed_count: int = 0
     notify_paused: bool = False
+    auth_error_detected: bool = False
+    last_keepalive_at: float = 0.0
     _task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
 state = _State()
@@ -77,6 +93,29 @@ def _unwrap_body(body: Any) -> dict[str, Any]:
     return inner if isinstance(inner, dict) else body
 
 
+def _extract_text_fields(body: Any) -> str:
+    if not isinstance(body, dict):
+        return ""
+    fields = ["message", "msg", "info", "error", "detail", "status_text"]
+    nested = _unwrap_body(body)
+    text_parts = [str(body.get(k, "")) for k in fields]
+    if isinstance(nested, dict):
+        text_parts.extend(str(nested.get(k, "")) for k in fields)
+    return " ".join(text_parts).lower()
+
+
+def _is_auth_error_response(status_code: int, body: Any) -> bool:
+    if status_code in (401, 403):
+        return True
+    text = _extract_text_fields(body)
+    return bool(text and any(k in text for k in AUTH_ERROR_KEYWORDS))
+
+
+def _mark_auth_error(pid: int, action: str) -> None:
+    state.auth_error_detected = True
+    logger.warning("Detected auth/session failure while %s pid=%s", action, pid)
+
+
 def _is_success(body: Any) -> bool:
     """Check if HDY API response indicates success (status==200 or code==1)."""
     if not isinstance(body, dict):
@@ -89,6 +128,57 @@ def _is_success(body: Any) -> bool:
     if code is not None:
         return int(code) in (1, 200)
     return False
+
+
+def _extract_jwt_token(body: dict[str, Any]) -> str:
+    body_data = body.get("data")
+    return body_data.get("jwt", "") if isinstance(body_data, dict) else body.get("jwt", "")
+
+
+async def _login_szhdy(username: str, api_key: str) -> Optional[str]:
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            r = await client.post(
+                f"{BASE_URL}/zjmf_api_login",
+                json={"username": username, "password": api_key},
+                headers={"Content-Type": "application/json"},
+            )
+            body: dict[str, Any] = {}
+            try:
+                body = r.json()
+            except Exception:
+                pass
+            jwt_token = _extract_jwt_token(body)
+            if r.status_code == 200 and jwt_token:
+                return jwt_token
+    except Exception as e:
+        logger.warning("keepalive login failed for %s: %s", username, e)
+    return None
+
+
+async def _keepalive_or_switch_account(current_token: Optional[str]) -> Optional[str]:
+    accounts = await database.get_site_accounts_credentials()
+    if not accounts:
+        return current_token
+
+    for acc in accounts:
+        account_id = acc.get("id")
+        username = str(acc.get("username") or "")
+        api_key = str(acc.get("api_key") or "")
+        if not account_id or not username or not api_key:
+            continue
+
+        new_token = await _login_szhdy(username, api_key)
+        if not new_token:
+            continue
+
+        await database.update_site_account_token(account_id, new_token, activate=True)
+        if not acc.get("is_active"):
+            logger.warning("Active account expired; switched to backup account: %s", username)
+        return new_token
+
+    logger.warning("All saved site accounts failed keepalive refresh, keeping existing token.")
+    return current_token
 
 
 async def fetch_product_config(pid: int, token: Optional[str]) -> Optional[dict[str, Any]]:
@@ -108,9 +198,20 @@ async def fetch_product_config(pid: int, token: Optional[str]) -> Optional[dict[
             )
             if r.status_code == 200:
                 try:
-                    return r.json()
+                    body = r.json()
+                    if _is_auth_error_response(r.status_code, body):
+                        _mark_auth_error(pid, "reading")
+                        return None
+                    return body
                 except Exception:
                     pass
+            else:
+                try:
+                    body = r.json()
+                except Exception:
+                    body = None
+                if _is_auth_error_response(r.status_code, body):
+                    _mark_auth_error(pid, "reading")
     except Exception as e:
         logger.warning("fetch_product_config pid=%s error: %s", pid, e)
     return None
@@ -193,17 +294,22 @@ async def try_add_to_cart(pid: int, billingcycle: Optional[str], token: Optional
             if body is not None and _is_success(body):
                 return "in_stock"
 
+            if _is_auth_error_response(r.status_code, body):
+                _mark_auth_error(pid, "add_to_cart")
+                return "unknown"
+
             # Check for explicit out-of-stock messages in known message fields
             oos_keywords = ["out of stock", "sold out", "no stock", "库存不足", "缺货", "已售罄", "无货", "nostock"]
             if isinstance(body, dict):
-                msg_text = " ".join(
-                    str(body.get(k, "")) for k in ("message", "msg", "info", "error")
-                ).lower()
+                msg_text = _extract_text_fields(body)
                 if any(kw in msg_text for kw in oos_keywords):
                     return "out_of_stock"
 
             if r.status_code in (200, 201) and body is not None:
-                return "out_of_stock"
+                # Do not assume out_of_stock on generic non-success payloads.
+                # Real-world responses here include login-expired hints, anti-bot challenges,
+                # and temporary backend errors with HTTP 200, which previously caused false "无货" alerts.
+                return "unknown"
 
             return "unknown"
     except Exception as e:
@@ -233,6 +339,12 @@ async def _crawl_loop() -> None:
             loop_enabled: bool = cfg.get("loop_enabled", False)
             token: Optional[str] = cfg.get("login_token")
             notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
+
+            now_ts = time.time()
+            if state.auth_error_detected or (now_ts - state.last_keepalive_at >= KEEPALIVE_INTERVAL_SEC):
+                token = await _keepalive_or_switch_account(token)
+                state.last_keepalive_at = now_ts
+                state.auth_error_detected = False
 
             # Build PID list: exec_start_pid → end_pid, then start_pid → exec_start_pid-1
             pids = list(range(exec_start_pid, end_pid + 1))
