@@ -57,6 +57,7 @@ class _State:
     checked_count: int = 0
     changed_count: int = 0
     notify_paused: bool = False
+    filter_sold_out: bool = False
     auth_error_detected: bool = False
     last_keepalive_at: float = 0.0
     _task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
@@ -71,6 +72,7 @@ def get_status() -> CrawlerStatus:
         checked_count=state.checked_count,
         changed_count=state.changed_count,
         notify_paused=state.notify_paused,
+        filter_sold_out=state.filter_sold_out,
     )
 
 
@@ -497,6 +499,10 @@ async def _process_pid(
     if not notify_fields or state.notify_paused:
         return
 
+    if state.filter_sold_out and stock_status == "out_of_stock":
+        logger.debug("Skip notify pid=%s due to filter_sold_out (stock_status=out_of_stock)", pid)
+        return
+
     price_float = _to_float_price(price)
     is_monthly = _is_monthly_cycle(billingcycle, billingcycle_zh)
     global_min = notify_filter_cfg.get("notify_price_min")
@@ -612,3 +618,9 @@ def toggle_notify_pause() -> bool:
     """Toggle notification pause. Returns new notify_paused value."""
     state.notify_paused = not state.notify_paused
     return state.notify_paused
+
+
+def toggle_filter_sold_out() -> bool:
+    """Toggle sold-out notification filter. Returns new filter_sold_out value."""
+    state.filter_sold_out = not state.filter_sold_out
+    return state.filter_sold_out
