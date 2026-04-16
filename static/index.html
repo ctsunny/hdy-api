@@ -92,6 +92,7 @@
     <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()">▶ 启动</button>
     <button class="btn btn-sm btn-danger" id="btn-stop" onclick="stopCrawler()" style="display:none">⏹ 停止</button>
     <button class="btn btn-sm" id="btn-pause-notify" onclick="toggleNotifyPause()" style="background:#333;color:var(--text);display:none" title="暂停/恢复推送通知（本轮有效，下轮自动恢复）">🔔 暂停推送</button>
+    <button class="btn btn-sm" id="btn-filter-sold-out" onclick="toggleFilterSoldOut()" style="background:#333;color:var(--text);display:none" title="开启后售罄消息不推送，关闭后推送所有消息">📦 过滤售罄</button>
   </div>
 </header>
 
@@ -389,6 +390,15 @@ async function pollStatus() {
       pauseBtn.textContent = '🔔 暂停推送';
       pauseBtn.style.background = '#333'; pauseBtn.style.color = 'var(--text)';
     }
+    const filterBtn = document.getElementById('btn-filter-sold-out');
+    filterBtn.style.display = s.running ? '' : 'none';
+    if (s.filter_sold_out) {
+      filterBtn.textContent = '🚫 已过滤售罄';
+      filterBtn.style.background = 'var(--warn)'; filterBtn.style.color = '#000';
+    } else {
+      filterBtn.textContent = '📦 过滤售罄';
+      filterBtn.style.background = '#333'; filterBtn.style.color = 'var(--text)';
+    }
     if (s.running && s.start_pid && s.end_pid && s.current_pid) {
       const pct = Math.round((s.current_pid - s.start_pid) / (s.end_pid - s.start_pid + 1) * 100);
       document.getElementById('progress-bar').style.width = pct + '%';
@@ -424,6 +434,13 @@ async function toggleNotifyPause() {
   const r = await api('POST', '/api/notify/toggle_pause');
   const d = await r.json();
   toast(d.notify_paused ? '推送已暂停（本轮结束后自动恢复）' : '推送已恢复', d.notify_paused ? '' : 'success');
+  await pollStatus();
+}
+
+async function toggleFilterSoldOut() {
+  const r = await api('POST', '/api/notify/toggle_filter_sold_out');
+  const d = await r.json();
+  toast(d.filter_sold_out ? '已开启过滤售罄：售罄消息不推送' : '已关闭过滤售罄：推送所有消息', d.filter_sold_out ? '' : 'success');
   await pollStatus();
 }
 

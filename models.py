@@ -97,6 +97,7 @@ class CrawlerStatus(BaseModel):
     checked_count: int = 0
     changed_count: int = 0
     notify_paused: bool = False
+    filter_sold_out: bool = False
 
 
 class NotifyTestRequest(BaseModel):

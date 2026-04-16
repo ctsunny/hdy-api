@@ -345,6 +345,13 @@ async def toggle_notify_pause() -> JSONResponse:
     return JSONResponse({"notify_paused": paused})
 
 
+@app.post(f"{BASE_PATH}/api/notify/toggle_filter_sold_out", dependencies=[Depends(require_auth)])
+async def toggle_filter_sold_out() -> JSONResponse:
+    """Toggle sold-out notification filter. When enabled, out_of_stock notifications are suppressed."""
+    filter_sold_out = crawler.toggle_filter_sold_out()
+    return JSONResponse({"filter_sold_out": filter_sold_out})
+
+
 @app.get(f"{BASE_PATH}/api/crawler/status", dependencies=[Depends(require_auth)])
 async def crawler_status() -> CrawlerStatus:
     status_obj = crawler.get_status()
@@ -354,6 +361,7 @@ async def crawler_status() -> CrawlerStatus:
     status_obj.exec_start_pid = cfg.get("exec_start_pid")
     status_obj.loop_enabled = cfg.get("loop_enabled", False)
     status_obj.notify_paused = crawler.state.notify_paused
+    status_obj.filter_sold_out = crawler.state.filter_sold_out
     return status_obj
 
 
