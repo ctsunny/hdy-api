@@ -898,7 +898,7 @@ async function loadVisitors() {
         <td style="font-size:11px;color:var(--muted);">${v.created_at ? fmtDate(v.created_at) : '—'}</td>
         <td>${v.is_active ? '<span class="badge badge-green">启用</span>' : '<span class="badge badge-gray">禁用</span>'}</td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-warn" onclick="resetVisitorPassword(${parseInt(v.id)}, '${esc(v.username)}')">重置密码</button>
+          <button class="btn btn-sm btn-warn" data-vid="${parseInt(v.id)}" data-vname="${esc(v.username)}" onclick="resetVisitorPasswordBtn(this)">重置密码</button>
           <button class="btn btn-sm btn-danger" onclick="deleteVisitor(${parseInt(v.id)})">删除</button>
         </td>
       </tr>`).join('')}
@@ -926,6 +926,12 @@ async function deleteVisitor(id) {
   const r = await api('DELETE', `/api/visitors/${id}`);
   toast(r.ok ? '账号已删除' : '删除失败', r.ok ? 'success' : 'error');
   if (r.ok) loadVisitors();
+}
+
+function resetVisitorPasswordBtn(btn) {
+  const id = parseInt(btn.dataset.vid);
+  const username = btn.dataset.vname;
+  resetVisitorPassword(id, username);
 }
 
 async function resetVisitorPassword(id, username) {

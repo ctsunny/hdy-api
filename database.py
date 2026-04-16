@@ -104,44 +104,40 @@ INSERT OR IGNORE INTO config (id) VALUES (1);
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_DDL)
-        # Migrate: add columns if they don't exist yet
-        async with db.execute("PRAGMA table_info(config)") as cur:
-            cols = {row[1] async for row in cur}
-        if "login_token" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
-        if "exec_start_pid" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN exec_start_pid INTEGER DEFAULT NULL")
-        if "notify_price_min" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_price_min REAL DEFAULT NULL")
-        if "notify_price_max" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_price_max REAL DEFAULT NULL")
-        if "notify_monthly_price_min" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_min REAL DEFAULT NULL")
-        if "notify_monthly_price_max" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_max REAL DEFAULT NULL")
-        async with db.execute("PRAGMA table_info(products)") as cur:
-            prod_cols = {row[1] async for row in cur}
-        if "region" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN region TEXT")
-        if "billingcycle_zh" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN billingcycle_zh TEXT")
-        if "cycles_json" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN cycles_json TEXT")
-        async with db.execute("PRAGMA table_info(site_accounts)") as cur:
-            account_cols = {row[1] async for row in cur}
-        if "api_key" not in account_cols:
-            await db.execute("ALTER TABLE site_accounts ADD COLUMN api_key TEXT")
-        # Migrate visitor_users table
-        async with db.execute("PRAGMA table_info(visitor_users)") as cur:
-            visitor_cols = {row[1] async for row in cur}
-        if "notify_price_min" not in visitor_cols and visitor_cols:
-            await db.execute("ALTER TABLE visitor_users ADD COLUMN notify_price_min REAL DEFAULT NULL")
-        if "notify_price_max" not in visitor_cols and visitor_cols:
-            await db.execute("ALTER TABLE visitor_users ADD COLUMN notify_price_max REAL DEFAULT NULL")
-        if "notify_monthly_price_min" not in visitor_cols and visitor_cols:
-            await db.execute("ALTER TABLE visitor_users ADD COLUMN notify_monthly_price_min REAL DEFAULT NULL")
-        if "notify_monthly_price_max" not in visitor_cols and visitor_cols:
-            await db.execute("ALTER TABLE visitor_users ADD COLUMN notify_monthly_price_max REAL DEFAULT NULL")
+
+        async def _add_missing_cols(table: str, col_defs: list[tuple[str, str]]) -> None:
+            async with db.execute(f"PRAGMA table_info({table})") as cur:
+                existing = {row[1] async for row in cur}
+            for col, definition in col_defs:
+                if col not in existing:
+                    await db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
+
+        # Migrate config table
+        await _add_missing_cols("config", [
+            ("login_token", "TEXT"),
+            ("exec_start_pid", "INTEGER DEFAULT NULL"),
+            ("notify_price_min", "REAL DEFAULT NULL"),
+            ("notify_price_max", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_min", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
+        # Migrate products table
+        await _add_missing_cols("products", [
+            ("region", "TEXT"),
+            ("billingcycle_zh", "TEXT"),
+            ("cycles_json", "TEXT"),
+        ])
+        # Migrate site_accounts table
+        await _add_missing_cols("site_accounts", [
+            ("api_key", "TEXT"),
+        ])
+        # Migrate visitor_users table (only if the table already existed before DDL run)
+        await _add_missing_cols("visitor_users", [
+            ("notify_price_min", "REAL DEFAULT NULL"),
+            ("notify_price_max", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_min", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
         await db.commit()
 
 

@@ -474,16 +474,19 @@ async def restore_backup(file: UploadFile = File(...)) -> JSONResponse:
     # Stop the crawler before replacing the DB
     await crawler.stop_crawler()
 
-    tmp_path = database.DB_PATH + ".restore_tmp"
+    db_dir = os.path.dirname(os.path.abspath(database.DB_PATH))
     try:
-        with open(tmp_path, "wb") as f:
-            f.write(content)
+        with tempfile.NamedTemporaryFile(dir=db_dir, delete=False, suffix=".tmp") as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
         os.replace(tmp_path, database.DB_PATH)
         # Re-run migrations to ensure schema is up to date
         await database.init_db()
     except Exception as e:
-        if os.path.exists(tmp_path):
+        try:
             os.remove(tmp_path)
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
 
     return JSONResponse({"status": "ok", "message": "数据库已恢复，请刷新页面"})
