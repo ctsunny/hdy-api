@@ -130,3 +130,39 @@ class PaginatedProducts(BaseModel):
     page: int
     page_size: int
     items: list[dict]
+
+
+class VisitorUser(BaseModel):
+    id: int
+    username: str
+    label: Optional[str] = None
+    notify_channels: dict[str, Any] = Field(default_factory=dict)
+    notify_price_min: Optional[float] = None
+    notify_price_max: Optional[float] = None
+    notify_monthly_price_min: Optional[float] = None
+    notify_monthly_price_max: Optional[float] = None
+    created_at: Optional[str] = None
+    is_active: bool = True
+
+
+class VisitorUserCreate(BaseModel):
+    username: str
+    password: str
+    label: Optional[str] = None
+
+
+class VisitorLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class VisitorNotifyUpdate(BaseModel):
+    notify_channels: dict[str, Any]
+    notify_price_min: Optional[float] = None
+    notify_price_max: Optional[float] = None
+    notify_monthly_price_min: Optional[float] = None
+    notify_monthly_price_max: Optional[float] = None
+
+
+class VisitorPasswordUpdate(BaseModel):
+    password: str

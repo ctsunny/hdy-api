@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HDY 产品查询</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
+    --accent: #6c63ff; --accent2: #00d2ff; --danger: #ff4d4d;
+    --success: #00e676; --warn: #ffb300; --text: #e0e0e0; --muted: #888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; color: var(--accent2); letter-spacing: 1px; }
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 4px; padding: 0 24px; }
+  nav button { background: none; border: none; color: var(--muted); padding: 12px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; transition: all .2s; }
+  nav button.active, nav button:hover { color: var(--text); border-bottom-color: var(--accent); }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .tab { display: none; } .tab.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; margin-bottom: 14px; color: var(--accent2); }
+  .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 12px; color: var(--muted); }
+  input, select { background: #12151f; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
+  input:focus, select:focus { outline: 1px solid var(--accent); }
+  button.btn { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .2s; }
+  button.btn:hover { opacity: .85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-warn { background: var(--warn); color: #000; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: #13161f; }
+  th.sortable { cursor: pointer; user-select: none; }
+  tr:hover td { background: #1e2130; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #003020; color: var(--success); }
+  .badge-red { background: #2a0000; color: var(--danger); }
+  .badge-gray { background: #222; color: var(--muted); }
+  .badge-blue { background: #001040; color: var(--accent2); }
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; display: none; z-index: 999; max-width: 320px; }
+  #toast.show { display: block; }
+  #toast.success { background: #003820; border: 1px solid var(--success); }
+  #toast.error { background: #2a0000; border: 1px solid var(--danger); }
+  .login-screen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 9000; align-items: center; justify-content: center; }
+  .login-screen.show { display: flex; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 36px 32px; width: 340px; }
+  .login-box h2 { text-align: center; margin-bottom: 24px; color: var(--accent2); }
+  .login-box input { width: 100%; margin-bottom: 12px; }
+  .login-box button { width: 100%; margin-top: 8px; }
+  .channel-block { border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+  .channel-block h3 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .toggle { width: 36px; height: 20px; background: #333; border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
+  .toggle.on::after { left: 18px; }
+</style>
+</head>
+<body>
+
+<!-- Login screen -->
+<div class="login-screen show" id="login-screen">
+  <div class="login-box">
+    <h2>🔐 HDY 产品查询</h2>
+    <input type="text" id="vis-user" placeholder="访客账号" autocomplete="username">
+    <input type="password" id="vis-pass" placeholder="访客密码" autocomplete="current-password">
+    <button class="btn btn-primary" onclick="doLogin()">登 录</button>
+    <p id="login-err" style="color:var(--danger);text-align:center;margin-top:8px;font-size:12px;"></p>
+  </div>
+</div>
+
+<header>
+  <h1>🏪 HDY 产品查询</h1>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <span id="vis-username" style="font-size:12px;color:var(--muted);"></span>
+    <button class="btn btn-sm" onclick="doLogout()" style="background:#333;color:var(--text);">退出</button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('tab-products', this)">📦 产品</button>
+  <button onclick="showTab('tab-account', this)">🔔 通知设置</button>
+</nav>
+
+<main>
+
+<!-- Products -->
+<div class="tab active" id="tab-products">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2>产品列表</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:12px;color:var(--muted);">每页:</label>
+        <select id="prod-page-size" onchange="prodPageSizeChange()" style="width:80px;">
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)">刷新</button>
+      </div>
+    </div>
+    <!-- Filter Panel -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
+      <div class="form-group">
+        <label>商品名</label>
+        <input type="text" id="filter-name" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
+      </div>
+      <div class="form-group">
+        <label>库存状态</label>
+        <select id="filter-stock" style="width:120px;" onchange="loadProducts(1)">
+          <option value="">全部</option>
+          <option value="in_stock">有货</option>
+          <option value="out_of_stock">无货</option>
+          <option value="unknown">未知</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>周期</label>
+        <select id="filter-cycle" style="width:120px;" onchange="loadProducts(1)">
+          <option value="">全部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>最低价</label>
+        <input type="number" id="filter-price-min" placeholder="0" style="width:90px;" oninput="_debounceProducts()">
+      </div>
+      <div class="form-group">
+        <label>最高价</label>
+        <input type="number" id="filter-price-max" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <button class="btn btn-sm" onclick="clearProductFilters()" style="background:#222;color:var(--text);">重置</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>PID</th><th>名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()">价格 ↕</th><th>周期</th><th>库存状态</th><th>最后变化</th></tr></thead>
+      <tbody id="products-body"></tbody>
+    </table>
+    <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<!-- Account / Notifications -->
+<div class="tab" id="tab-account">
+  <div class="card">
+    <h2>我的账号</h2>
+    <p style="color:var(--muted);font-size:13px;">账号：<strong id="acc-username" style="color:var(--text);">—</strong></p>
+  </div>
+  <div class="card">
+    <h2>通知渠道配置</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px;">配置属于您的通知渠道。当系统检测到产品变化时，将向已启用的渠道发送通知。</p>
+    <div class="form-row" style="margin-bottom:14px;">
+      <div class="form-group"><label>通知最低价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-min" placeholder="不限制" style="width:160px;"></div>
+      <div class="form-group"><label>通知最高价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-max" placeholder="不限制" style="width:160px;"></div>
+      <div class="form-group"><label>月租最低价</label><input type="number" step="0.01" id="vis-notify-monthly-min" placeholder="月租单独规则" style="width:160px;"></div>
+      <div class="form-group"><label>月租最高价</label><input type="number" step="0.01" id="vis-notify-monthly-max" placeholder="月租单独规则" style="width:160px;"></div>
+    </div>
+    <div id="vis-notify-channels"></div>
+    <button class="btn btn-primary" onclick="saveVisitorNotify()" style="margin-top:8px;">保存通知配置</button>
+  </div>
+</div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const BASE = window.location.pathname.replace(/\/+$/, '').replace(/\/visitor$/, '');
+let _token = sessionStorage.getItem('hdy_visitor_token') || '';
+let _visitorMe = null;
+
+// ── HTML escape helper ─────────────────────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(BASE + path, opts);
+  if (r.status === 401) { showLogin(); throw new Error('Unauthorized'); }
+  return r;
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const user = document.getElementById('vis-user').value.trim();
+  const pass = document.getElementById('vis-pass').value;
+  document.getElementById('login-err').textContent = '';
+  try {
+    const r = await fetch(BASE + '/api/visitor/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+    if (r.ok) {
+      const d = await r.json();
+      _token = d.access_token;
+      sessionStorage.setItem('hdy_visitor_token', _token);
+      hideLogin();
+      await init();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      document.getElementById('login-err').textContent = d.detail || '账号或密码错误';
+    }
+  } catch (e) { document.getElementById('login-err').textContent = '连接失败: ' + e.message; }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('hdy_visitor_token');
+  _token = '';
+  _visitorMe = null;
+  showLogin();
+}
+
+function showLogin() { document.getElementById('login-screen').classList.add('show'); }
+function hideLogin() { document.getElementById('login-screen').classList.remove('show'); }
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'tab-products') loadProducts();
+  if (id === 'tab-account') loadAccountTab();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── Products ───────────────────────────────────────────────────────────────
+let _prodPage = 1;
+let _prodDebounceTimer = null;
+let _prodPriceSort = '';
+
+function _debounceProducts() {
+  clearTimeout(_prodDebounceTimer);
+  _prodDebounceTimer = setTimeout(() => loadProducts(1), 500);
+}
+
+function prodPageSizeChange() { loadProducts(1); }
+
+function updatePriceSortHeader() {
+  const el = document.getElementById('products-price-sort');
+  if (!el) return;
+  if (_prodPriceSort === 'asc') el.textContent = '价格 ↑';
+  else if (_prodPriceSort === 'desc') el.textContent = '价格 ↓';
+  else el.textContent = '价格 ↕';
+}
+
+function togglePriceSort() {
+  switch (_prodPriceSort) {
+    case '': _prodPriceSort = 'asc'; break;
+    case 'asc': _prodPriceSort = 'desc'; break;
+    default: _prodPriceSort = ''; break;
+  }
+  updatePriceSortHeader();
+  loadProducts(1);
+}
+
+function clearProductFilters() {
+  document.getElementById('filter-name').value = '';
+  document.getElementById('filter-stock').value = '';
+  document.getElementById('filter-cycle').value = '';
+  document.getElementById('filter-price-min').value = '';
+  document.getElementById('filter-price-max').value = '';
+  _prodPriceSort = '';
+  updatePriceSortHeader();
+  loadProducts(1);
+}
+
+async function loadProductFilterOptions() {
+  try {
+    const r = await api('GET', '/api/visitor/products/filter_options');
+    if (!r.ok) return;
+    const opts = await r.json();
+    const cycleSel = document.getElementById('filter-cycle');
+    const curCycle = cycleSel.value;
+    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function loadProducts(page) {
+  if (page) _prodPage = page;
+  const pageSize = parseInt(document.getElementById('prod-page-size').value) || 20;
+  const name = document.getElementById('filter-name').value;
+  const stock = document.getElementById('filter-stock').value;
+  const cycle = document.getElementById('filter-cycle').value;
+  const priceMin = document.getElementById('filter-price-min').value;
+  const priceMax = document.getElementById('filter-price-max').value;
+
+  let url = `/api/visitor/products?page=${_prodPage}&page_size=${pageSize}`;
+  if (name) url += `&name=${encodeURIComponent(name)}`;
+  if (stock) url += `&stock_status=${encodeURIComponent(stock)}`;
+  if (cycle) url += `&billingcycle=${encodeURIComponent(cycle)}`;
+  if (priceMin) url += `&price_min=${priceMin}`;
+  if (priceMax) url += `&price_max=${priceMax}`;
+  if (_prodPriceSort) url += `&sort_price=${_prodPriceSort}`;
+
+  try {
+    const r = await api('GET', url);
+    if (!r.ok) return;
+    const data = await r.json();
+    const products = data.items || [];
+    const tbody = document.getElementById('products-body');
+    tbody.innerHTML = products.map(p => `
+      <tr>
+        <td>${esc(p.pid)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.name)}">${p.name ? `<a href="https://www.szhdy.com/cart?action=configureproduct&pid=${encodeURIComponent(p.pid)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(p.name)}</a>` : '—'}</td>
+        <td>${esc(p.price) || '—'}</td>
+        <td>${esc(p.billingcycle_zh) || '—'}</td>
+        <td>${stockBadge(p.stock_status)}</td>
+        <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_changed_at)}</td>
+      </tr>`).join('');
+    renderProductPagination(data.total, data.page, data.page_size);
+    await loadProductFilterOptions();
+  } catch(e) {}
+}
+
+function renderProductPagination(total, page, pageSize) {
+  const pages = Math.ceil(total / pageSize) || 1;
+  const el = document.getElementById('products-pagination');
+  if (!el) return;
+  el.innerHTML = '';
+  const info = document.createElement('span');
+  info.style.cssText = 'font-size:12px;color:var(--muted);margin-right:8px;';
+  info.textContent = `共 ${total} 条，第 ${page}/${pages} 页`;
+  el.appendChild(info);
+
+  function addBtn(label, targetPage, isCurrent) {
+    const b = document.createElement('button');
+    b.className = 'btn btn-sm' + (isCurrent ? ' btn-primary' : '');
+    b.style.background = isCurrent ? '' : '#222'; b.style.color = '#fff';
+    b.textContent = label;
+    b.disabled = isCurrent;
+    b.onclick = () => loadProducts(targetPage);
+    el.appendChild(b);
+  }
+
+  if (page > 1) addBtn('«', 1, false);
+  if (page > 1) addBtn('‹', page - 1, false);
+  const start = Math.max(1, page - 3);
+  const end = Math.min(pages, page + 3);
+  for (let i = start; i <= end; i++) addBtn(i, i, i === page);
+  if (page < pages) addBtn('›', page + 1, false);
+  if (page < pages) addBtn('»', pages, false);
+}
+
+function stockBadge(s) {
+  if (s === 'in_stock') return '<span class="badge badge-green">有货</span>';
+  if (s === 'out_of_stock') return '<span class="badge badge-red">无货</span>';
+  return '<span class="badge badge-gray">未知</span>';
+}
+
+// ── Account / Notification tab ─────────────────────────────────────────────
+const CHANNELS = [
+  { key: 'telegram', name: 'Telegram Bot', fields: [['bot_token','Bot Token'],['chat_id','Chat ID']] },
+  { key: 'wecom', name: '企业微信机器人', fields: [['webhook_url','Webhook URL']] },
+  { key: 'dingtalk', name: '钉钉机器人', fields: [['webhook_url','Webhook URL'],['secret','加签 Secret (可选)']] },
+  { key: 'feishu', name: '飞书机器人', fields: [['webhook_url','Webhook URL']] },
+  { key: 'serverchan', name: 'Server酱 (微信)', fields: [['sendkey','SendKey']] },
+  { key: 'bark', name: 'Bark (iOS)', fields: [['device_key','Device Key']] },
+  { key: 'pushplus', name: 'PushPlus', fields: [['token','Token']] },
+  { key: 'discord', name: 'Discord Webhook', fields: [['webhook_url','Webhook URL']] },
+  { key: 'email', name: 'SMTP 邮件', fields: [['host','服务器'],['port','端口'],['user','账号'],['password','密码'],['to','收件人'],['use_tls','TLS(true/false)']] },
+  { key: 'webhook', name: '自定义 Webhook', fields: [['url','URL'],['method','方法(POST)'],['headers','Headers(JSON)'],['payload','Payload(JSON,{{title}},{{body}})']] },
+];
+
+let _notifyCfg = {};
+
+async function loadAccountTab() {
+  try {
+    const r = await api('GET', '/api/visitor/me');
+    if (!r.ok) return;
+    _visitorMe = await r.json();
+    document.getElementById('acc-username').textContent = _visitorMe.username || '—';
+    _notifyCfg = _visitorMe.notify_channels || {};
+    document.getElementById('vis-notify-price-min').value = _visitorMe.notify_price_min ?? '';
+    document.getElementById('vis-notify-price-max').value = _visitorMe.notify_price_max ?? '';
+    document.getElementById('vis-notify-monthly-min').value = _visitorMe.notify_monthly_price_min ?? '';
+    document.getElementById('vis-notify-monthly-max').value = _visitorMe.notify_monthly_price_max ?? '';
+    renderNotifyChannels();
+  } catch(e) {}
+}
+
+function renderNotifyChannels() {
+  const container = document.getElementById('vis-notify-channels');
+  container.innerHTML = CHANNELS.map(ch => {
+    const cfg = _notifyCfg[ch.key] || {};
+    const enabled = cfg.enabled || false;
+    const fields = ch.fields.map(([k, label]) => `
+      <div class="form-group">
+        <label>${label}</label>
+        <input type="text" id="vnc-${ch.key}-${k}" value="${esc(cfg[k] || '')}" style="width:260px;">
+      </div>`).join('');
+    return `
+      <div class="channel-block">
+        <h3>
+          <div class="toggle ${enabled ? 'on' : ''}" id="vtog-${ch.key}" onclick="toggleChannel('${ch.key}')"></div>
+          ${ch.name}
+          <button class="btn btn-sm" style="margin-left:auto;background:#222;color:var(--text);"
+            onclick="testChannel('${ch.key}')">测试</button>
+        </h3>
+        <div class="form-row">${fields}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleChannel(key) {
+  const tog = document.getElementById('vtog-' + key);
+  tog.classList.toggle('on');
+}
+
+function collectNotifyConfig() {
+  const result = {};
+  CHANNELS.forEach(ch => {
+    const enabled = document.getElementById('vtog-' + ch.key).classList.contains('on');
+    const cfg = { enabled };
+    ch.fields.forEach(([k]) => {
+      const el = document.getElementById(`vnc-${ch.key}-${k}`);
+      if (el && el.value) cfg[k] = el.value;
+    });
+    if (enabled || Object.keys(cfg).length > 1) result[ch.key] = cfg;
+  });
+  return result;
+}
+
+async function saveVisitorNotify() {
+  const nc = collectNotifyConfig();
+  const parseOpt = (id) => {
+    const v = document.getElementById(id).value;
+    if (v === '') return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const body = {
+    notify_channels: nc,
+    notify_price_min: parseOpt('vis-notify-price-min'),
+    notify_price_max: parseOpt('vis-notify-price-max'),
+    notify_monthly_price_min: parseOpt('vis-notify-monthly-min'),
+    notify_monthly_price_max: parseOpt('vis-notify-monthly-max'),
+  };
+  const r = await api('PUT', '/api/visitor/me/notify', body);
+  toast(r.ok ? '通知配置已保存' : '保存失败', r.ok ? 'success' : 'error');
+  if (r.ok) _notifyCfg = nc;
+}
+
+async function testChannel(key) {
+  const nc = collectNotifyConfig();
+  const cfg = nc[key] || {};
+  const r = await api('POST', '/api/visitor/notify/test', { channel: key, config: cfg });
+  const d = await r.json();
+  toast(d.success ? `${key} 发送成功 ✓` : `${key} 发送失败 ✗`, d.success ? 'success' : 'error');
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s) return '—';
+  const str = String(s);
+  const hasTz = /(?:Z|[+-]\d{2}:\d{2})$/.test(str);
+  const d = new Date(hasTz ? str : (str + 'Z'));
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await api('GET', '/api/visitor/me');
+    if (!r.ok) { showLogin(); return; }
+    _visitorMe = await r.json();
+    document.getElementById('vis-username').textContent = '访客: ' + (_visitorMe.username || '');
+    document.getElementById('acc-username').textContent = _visitorMe.username || '—';
+    updatePriceSortHeader();
+    await loadProducts(1);
+  } catch(e) { showLogin(); }
+}
+
+if (_token) { hideLogin(); init(); }
+
+document.getElementById('vis-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
