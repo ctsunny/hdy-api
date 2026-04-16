@@ -94,6 +94,7 @@ if [[ -n "${SOURCE_REPO}" ]]; then
     done
     mkdir -p "${TMPDIR_GIT}/static"
     curl -fsSL "${GITHUB_RAW}/static/index.html" -o "${TMPDIR_GIT}/static/index.html"
+    curl -fsSL "${GITHUB_RAW}/static/visitor.html" -o "${TMPDIR_GIT}/static/visitor.html"
     NEW_SOURCE="${TMPDIR_GIT}"
 
 elif [[ -n "${SOURCE_DIR}" ]]; then
