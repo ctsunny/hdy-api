@@ -61,6 +61,7 @@ if [[ -z "${_dir}" ]] || [[ ! -f "${_dir}/requirements.txt" ]]; then
     # static directory
     mkdir -p "${SCRIPT_DIR}/static"
     curl -fsSL "${GITHUB_RAW}/static/index.html" -o "${SCRIPT_DIR}/static/index.html"
+    curl -fsSL "${GITHUB_RAW}/static/visitor.html" -o "${SCRIPT_DIR}/static/visitor.html"
 
     success "项目文件下载完成"
 else
