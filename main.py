@@ -9,12 +9,14 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -37,6 +39,10 @@ from models import (
     SiteAccountCreate,
     SiteLoginRequest,
     TokenResponse,
+    VisitorLoginRequest,
+    VisitorNotifyUpdate,
+    VisitorPasswordUpdate,
+    VisitorUserCreate,
 )
 
 # ---------------------------------------------------------------------------
@@ -121,6 +127,40 @@ async def require_auth(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
 ) -> None:
     if creds is None or not _verify_token(creds.credentials):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+
+# ---------------------------------------------------------------------------
+# Visitor JWT helpers
+# ---------------------------------------------------------------------------
+
+_VISITOR_TOKEN_EXPIRE_DAYS = 7
+
+
+def _create_visitor_token(visitor_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=_VISITOR_TOKEN_EXPIRE_DAYS)
+    return jwt.encode(
+        {"sub": "visitor", "visitor_id": visitor_id, "exp": expire},
+        _SECRET_KEY,
+        algorithm=_ALGORITHM,
+    )
+
+
+async def require_visitor(
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> int:
+    """Dependency that validates visitor JWT and returns the visitor's user ID."""
+    if creds is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    try:
+        payload = jwt.decode(creds.credentials, _SECRET_KEY, algorithms=[_ALGORITHM])
+        if payload.get("sub") != "visitor":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+        visitor_id = payload.get("visitor_id")
+        if not visitor_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+        return int(visitor_id)
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
 
@@ -406,6 +446,184 @@ async def test_notify(req: NotifyTestRequest) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# Backup & Restore routes
+# ---------------------------------------------------------------------------
+
+_SQLITE_MAGIC = b"SQLite format 3\x00"
+
+
+@app.get(f"{BASE_PATH}/api/backup", dependencies=[Depends(require_auth)])
+async def download_backup() -> FileResponse:
+    """Download the full SQLite database as a backup file."""
+    if not os.path.exists(database.DB_PATH):
+        raise HTTPException(status_code=404, detail="数据库文件不存在")
+    return FileResponse(
+        database.DB_PATH,
+        media_type="application/octet-stream",
+        filename="hdy_backup.db",
+    )
+
+
+@app.post(f"{BASE_PATH}/api/restore", dependencies=[Depends(require_auth)])
+async def restore_backup(file: UploadFile = File(...)) -> JSONResponse:
+    """Upload a previously downloaded backup and replace the current database."""
+    content = await file.read()
+    if not content.startswith(_SQLITE_MAGIC):
+        raise HTTPException(status_code=400, detail="不是有效的 SQLite 数据库文件")
+
+    # Stop the crawler before replacing the DB
+    await crawler.stop_crawler()
+
+    db_dir = os.path.dirname(os.path.abspath(database.DB_PATH))
+    try:
+        with tempfile.NamedTemporaryFile(dir=db_dir, delete=False, suffix=".tmp") as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        os.replace(tmp_path, database.DB_PATH)
+        # Re-run migrations to ensure schema is up to date
+        await database.init_db()
+    except Exception as e:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return JSONResponse({"status": "ok", "message": "数据库已恢复，请刷新页面"})
+
+
+# ---------------------------------------------------------------------------
+# Admin — visitor user management routes
+# ---------------------------------------------------------------------------
+
+@app.get(f"{BASE_PATH}/api/visitors", dependencies=[Depends(require_auth)])
+async def list_visitors() -> JSONResponse:
+    visitors = await database.get_visitor_users()
+    return JSONResponse(visitors)
+
+
+@app.post(f"{BASE_PATH}/api/visitors", dependencies=[Depends(require_auth)])
+async def create_visitor(req: VisitorUserCreate) -> JSONResponse:
+    username = req.username.strip()
+    if not username or not req.password:
+        raise HTTPException(status_code=400, detail="账号和密码不能为空")
+    existing = await database.get_visitor_by_username(username)
+    if existing:
+        raise HTTPException(status_code=409, detail="该账号已存在")
+    password_hash = _pwd_ctx.hash(req.password)
+    visitor_id = await database.create_visitor_user(username, password_hash, req.label)
+    return JSONResponse({"status": "ok", "id": visitor_id, "message": "访客账号已创建"})
+
+
+@app.delete(f"{BASE_PATH}/api/visitors/{{visitor_id}}", dependencies=[Depends(require_auth)])
+async def delete_visitor(visitor_id: int) -> JSONResponse:
+    await database.delete_visitor_user(visitor_id)
+    return JSONResponse({"status": "ok"})
+
+
+@app.put(f"{BASE_PATH}/api/visitors/{{visitor_id}}/password", dependencies=[Depends(require_auth)])
+async def reset_visitor_password(visitor_id: int, req: VisitorPasswordUpdate) -> JSONResponse:
+    if not req.password:
+        raise HTTPException(status_code=400, detail="密码不能为空")
+    password_hash = _pwd_ctx.hash(req.password)
+    await database.update_visitor_password(visitor_id, password_hash)
+    return JSONResponse({"status": "ok", "message": "密码已重置"})
+
+
+# ---------------------------------------------------------------------------
+# Visitor — public routes (visitor JWT required)
+# ---------------------------------------------------------------------------
+
+@app.post(f"{BASE_PATH}/api/visitor/login", response_model=TokenResponse)
+async def visitor_login(req: VisitorLoginRequest) -> TokenResponse:
+    visitor = await database.get_visitor_by_username(req.username.strip())
+    if not visitor or not visitor.get("is_active"):
+        raise HTTPException(status_code=401, detail="账号或密码错误")
+    if not _pwd_ctx.verify(req.password, visitor.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="账号或密码错误")
+    token = _create_visitor_token(visitor["id"])
+    return TokenResponse(access_token=token)
+
+
+@app.get(f"{BASE_PATH}/api/visitor/me")
+async def visitor_me(visitor_id: int = Depends(require_visitor)) -> JSONResponse:
+    visitor = await database.get_visitor_by_id(visitor_id)
+    if not visitor:
+        raise HTTPException(status_code=404, detail="访客账号不存在")
+    return JSONResponse(visitor)
+
+
+@app.put(f"{BASE_PATH}/api/visitor/me/notify")
+async def visitor_update_notify(
+    req: VisitorNotifyUpdate,
+    visitor_id: int = Depends(require_visitor),
+) -> JSONResponse:
+    await database.update_visitor_notify(
+        visitor_id,
+        req.notify_channels,
+        req.notify_price_min,
+        req.notify_price_max,
+        req.notify_monthly_price_min,
+        req.notify_monthly_price_max,
+    )
+    return JSONResponse({"status": "ok"})
+
+
+@app.post(f"{BASE_PATH}/api/visitor/notify/test")
+async def visitor_test_notify(
+    req: NotifyTestRequest,
+    visitor_id: int = Depends(require_visitor),
+) -> JSONResponse:
+    success = await notifier.send_channel(
+        req.channel, req.config, title="HDY Monitor 测试通知", body="通知渠道配置成功！"
+    )
+    return JSONResponse({"success": success})
+
+
+@app.get(f"{BASE_PATH}/api/visitor/products")
+async def visitor_list_products(
+    page: int = 1,
+    page_size: int = 20,
+    name: Optional[str] = None,
+    stock_status: Optional[str] = None,
+    billingcycle: Optional[str] = None,
+    price_min: Optional[float] = None,
+    price_max: Optional[float] = None,
+    sort_price: Optional[str] = None,
+    visitor_id: int = Depends(require_visitor),
+) -> JSONResponse:
+    page_size = min(max(page_size, 1), 200)
+    offset = (page - 1) * page_size
+    sort_price = sort_price if sort_price in ("asc", "desc") else None
+    products = await database.get_products(
+        limit=page_size,
+        offset=offset,
+        name=name,
+        stock_status=stock_status,
+        billingcycle=billingcycle,
+        price_min=price_min,
+        price_max=price_max,
+        sort_price=sort_price,
+    )
+    total = await database.count_products(
+        name=name,
+        stock_status=stock_status,
+        billingcycle=billingcycle,
+        price_min=price_min,
+        price_max=price_max,
+    )
+    return JSONResponse({"total": total, "page": page, "page_size": page_size, "items": products})
+
+
+@app.get(f"{BASE_PATH}/api/visitor/products/filter_options")
+async def visitor_product_filter_options(
+    visitor_id: int = Depends(require_visitor),
+) -> JSONResponse:
+    opts = await database.get_product_filter_options()
+    return JSONResponse(opts)
+
+
+# ---------------------------------------------------------------------------
 # Static files & SPA fallback
 # ---------------------------------------------------------------------------
 
@@ -420,6 +638,14 @@ if _STATIC_DIR.exists():
     @app.get(f"{BASE_PATH}", include_in_schema=False)
     async def serve_index() -> FileResponse:
         return FileResponse(str(_STATIC_DIR / "index.html"))
+
+    @app.get(f"{BASE_PATH}/visitor", include_in_schema=False)
+    @app.get(f"{BASE_PATH}/visitor/", include_in_schema=False)
+    async def serve_visitor_page() -> FileResponse:
+        vf = _STATIC_DIR / "visitor.html"
+        if not vf.exists():
+            raise HTTPException(status_code=404)
+        return FileResponse(str(vf))
 
     # Catch-all for SPA routing
     @app.get(f"{BASE_PATH}/{{full_path:path}}", include_in_schema=False)

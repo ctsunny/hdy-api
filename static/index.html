@@ -101,6 +101,7 @@
   <button onclick="showTab('tab-changes', this)">🔔 变化记录</button>
   <button onclick="showTab('tab-config', this)">⚙️ 配置</button>
   <button onclick="showTab('tab-notify', this)">📡 通知渠道</button>
+  <button onclick="showTab('tab-visitors', this)">👥 访客管理</button>
 </nav>
 
 <main>
@@ -251,6 +252,19 @@
     </div>
     <button class="btn btn-primary" onclick="saveManualCookie()">保存 Cookie</button>
   </div>
+
+  <div class="card">
+    <h2>🗄️ 全站备份与恢复</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">备份将下载完整的 SQLite 数据库文件（含产品、变化记录、配置、账号等所有数据）。恢复时请上传之前下载的备份文件，<strong style="color:var(--warn);">当前数据将被完全替换，操作不可撤销。</strong></p>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="downloadBackup()">⬇️ 下载备份</button>
+      <label class="btn btn-warn" style="cursor:pointer;">
+        ⬆️ 恢复备份
+        <input type="file" id="restore-file" accept=".db" style="display:none;" onchange="uploadRestore(this)">
+      </label>
+      <span id="restore-status" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+  </div>
 </div>
 
 <!-- Notify -->
@@ -260,6 +274,26 @@
     <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">开启并配置需要的渠道，点击「保存」后生效，可点「测试」验证</p>
     <div id="notify-channels"></div>
     <button class="btn btn-primary" onclick="saveNotifyConfig()" style="margin-top:8px;">保存通知配置</button>
+  </div>
+</div>
+
+<!-- Visitors -->
+<div class="tab" id="tab-visitors">
+  <div class="card">
+    <h2>访客账号管理</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+      访客可通过 <a href="visitor" target="_blank" style="color:var(--accent2);">/visitor</a> 页面使用账号密码登录，仅可查看产品列表并配置自己的通知渠道。
+    </p>
+    <div id="visitor-list" style="margin-bottom:14px;"></div>
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;">➕ 创建访客账号</div>
+      <div class="form-row">
+        <div class="form-group"><label>备注名</label><input type="text" id="visitor-label" placeholder="可选备注"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="visitor-username" placeholder="登录账号"></div>
+        <div class="form-group"><label>密码</label><input type="password" id="visitor-password" placeholder="登录密码"></div>
+      </div>
+      <button class="btn btn-primary" onclick="createVisitor()">创建账号</button>
+    </div>
   </div>
 </div>
 
@@ -321,6 +355,7 @@ function showTab(id, btn) {
   if (id === 'tab-changes') loadChanges();
   if (id === 'tab-config') loadConfig();
   if (id === 'tab-notify') loadNotifyConfig();
+  if (id === 'tab-visitors') loadVisitors();
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
@@ -784,6 +819,128 @@ async function testChannel(key) {
   const r = await api('POST', '/api/notify/test', { channel: key, config: cfg });
   const d = await r.json();
   toast(d.success ? `${key} 发送成功 ✓` : `${key} 发送失败 ✗`, d.success ? 'success' : 'error');
+}
+
+// ── Backup & Restore ──────────────────────────────────────────────────────
+function downloadBackup() {
+  const a = document.createElement('a');
+  a.href = BASE + '/api/backup';
+  a.setAttribute('download', 'hdy_backup.db');
+  // Pass auth token via URL query since <a> download doesn't send headers.
+  // Instead, fetch the blob and trigger download.
+  api('GET', '/api/backup').then(async r => {
+    if (!r.ok) { toast('备份下载失败', 'error'); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const now = new Date();
+    const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    link.download = `hdy_backup_${ts}.db`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast('备份已下载', 'success');
+  }).catch(e => toast('备份下载失败: ' + e.message, 'error'));
+}
+
+async function uploadRestore(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('restore-status');
+  if (!confirm(`确定要恢复备份「${file.name}」吗？当前所有数据将被替换，操作不可撤销！`)) {
+    input.value = '';
+    return;
+  }
+  status.textContent = '正在上传并恢复...';
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const r = await fetch(BASE + '/api/restore', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _token },
+      body: formData,
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      status.textContent = '✅ ' + (d.message || '恢复成功');
+      status.style.color = 'var(--success)';
+      toast('数据库已恢复，请刷新页面', 'success');
+    } else {
+      status.textContent = '❌ ' + (d.detail || d.message || '恢复失败');
+      status.style.color = 'var(--danger)';
+      toast('恢复失败: ' + (d.detail || d.message || r.status), 'error');
+    }
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = 'var(--danger)';
+    toast('恢复失败: ' + e.message, 'error');
+  }
+  input.value = '';
+}
+
+// ── Visitor management ────────────────────────────────────────────────────
+async function loadVisitors() {
+  const r = await api('GET', '/api/visitors');
+  if (!r.ok) return;
+  const visitors = await r.json();
+  const el = document.getElementById('visitor-list');
+  if (!el) return;
+  if (!visitors || visitors.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无访客账号</p>';
+    return;
+  }
+  el.innerHTML = `<table style="width:100%;margin-bottom:8px;">
+    <thead><tr><th>备注</th><th>账号</th><th>创建时间</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${visitors.map(v => `
+      <tr>
+        <td>${esc(v.label) || '—'}</td>
+        <td>${esc(v.username)}</td>
+        <td style="font-size:11px;color:var(--muted);">${v.created_at ? fmtDate(v.created_at) : '—'}</td>
+        <td>${v.is_active ? '<span class="badge badge-green">启用</span>' : '<span class="badge badge-gray">禁用</span>'}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-warn" data-vid="${parseInt(v.id)}" data-vname="${esc(v.username)}" onclick="resetVisitorPasswordBtn(this)">重置密码</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteVisitor(${parseInt(v.id)})">删除</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function createVisitor() {
+  const label = document.getElementById('visitor-label').value.trim();
+  const username = document.getElementById('visitor-username').value.trim();
+  const password = document.getElementById('visitor-password').value;
+  if (!username || !password) return toast('账号和密码不能为空', 'error');
+  const r = await api('POST', '/api/visitors', { label, username, password });
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '账号已创建' : '创建失败'), r.ok ? 'success' : 'error');
+  if (r.ok) {
+    document.getElementById('visitor-label').value = '';
+    document.getElementById('visitor-username').value = '';
+    document.getElementById('visitor-password').value = '';
+    loadVisitors();
+  }
+}
+
+async function deleteVisitor(id) {
+  if (!confirm('确定删除该访客账号？')) return;
+  const r = await api('DELETE', `/api/visitors/${id}`);
+  toast(r.ok ? '账号已删除' : '删除失败', r.ok ? 'success' : 'error');
+  if (r.ok) loadVisitors();
+}
+
+function resetVisitorPasswordBtn(btn) {
+  const id = parseInt(btn.dataset.vid);
+  const username = btn.dataset.vname;
+  resetVisitorPassword(id, username);
+}
+
+async function resetVisitorPassword(id, username) {
+  const newPwd = prompt(`重置「${username}」的密码，请输入新密码：`);
+  if (newPwd === null) return;
+  if (!newPwd.trim()) return toast('密码不能为空', 'error');
+  const r = await api('PUT', `/api/visitors/${id}/password`, { password: newPwd });
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '密码已重置' : '重置失败'), r.ok ? 'success' : 'error');
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────

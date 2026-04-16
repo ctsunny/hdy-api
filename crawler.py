@@ -566,6 +566,25 @@ async def _process_pid(
 
     await notifier.send_all(notify_channels, title=title, body=body_text, pid=pid)
 
+    # Also notify active visitor users who have enabled notification channels
+    visitor_configs = await database.get_active_visitor_notify_configs()
+    for vcfg in visitor_configs:
+        v_channels = vcfg.get("notify_channels", {})
+        if not v_channels:
+            continue
+        # Apply visitor-specific price filter if configured
+        v_price_min = vcfg.get("notify_price_min")
+        v_price_max = vcfg.get("notify_price_max")
+        v_monthly_min = vcfg.get("notify_monthly_price_min")
+        v_monthly_max = vcfg.get("notify_monthly_price_max")
+        if is_monthly and (v_monthly_min is not None or v_monthly_max is not None):
+            if not _in_price_range(price_float, v_monthly_min, v_monthly_max):
+                continue
+        elif (v_price_min is not None or v_price_max is not None):
+            if not _in_price_range(price_float, v_price_min, v_price_max):
+                continue
+        await notifier.send_all(v_channels, title=title, body=body_text, pid=pid)
+
 
 # ---------------------------------------------------------------------------
 # Public API

@@ -82,6 +82,20 @@ CREATE TABLE IF NOT EXISTS site_accounts (
     created_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS visitor_users (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    username                 TEXT UNIQUE NOT NULL,
+    password_hash            TEXT NOT NULL,
+    label                    TEXT,
+    notify_channels          TEXT DEFAULT '{}',
+    notify_price_min         REAL DEFAULT NULL,
+    notify_price_max         REAL DEFAULT NULL,
+    notify_monthly_price_min REAL DEFAULT NULL,
+    notify_monthly_price_max REAL DEFAULT NULL,
+    created_at               TEXT,
+    is_active                INTEGER DEFAULT 1
+);
+
 -- Ensure the single config row always exists
 INSERT OR IGNORE INTO config (id) VALUES (1);
 """
@@ -90,33 +104,40 @@ INSERT OR IGNORE INTO config (id) VALUES (1);
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_DDL)
-        # Migrate: add columns if they don't exist yet
-        async with db.execute("PRAGMA table_info(config)") as cur:
-            cols = {row[1] async for row in cur}
-        if "login_token" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN login_token TEXT")
-        if "exec_start_pid" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN exec_start_pid INTEGER DEFAULT NULL")
-        if "notify_price_min" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_price_min REAL DEFAULT NULL")
-        if "notify_price_max" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_price_max REAL DEFAULT NULL")
-        if "notify_monthly_price_min" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_min REAL DEFAULT NULL")
-        if "notify_monthly_price_max" not in cols:
-            await db.execute("ALTER TABLE config ADD COLUMN notify_monthly_price_max REAL DEFAULT NULL")
-        async with db.execute("PRAGMA table_info(products)") as cur:
-            prod_cols = {row[1] async for row in cur}
-        if "region" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN region TEXT")
-        if "billingcycle_zh" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN billingcycle_zh TEXT")
-        if "cycles_json" not in prod_cols:
-            await db.execute("ALTER TABLE products ADD COLUMN cycles_json TEXT")
-        async with db.execute("PRAGMA table_info(site_accounts)") as cur:
-            account_cols = {row[1] async for row in cur}
-        if "api_key" not in account_cols:
-            await db.execute("ALTER TABLE site_accounts ADD COLUMN api_key TEXT")
+
+        async def _add_missing_cols(table: str, col_defs: list[tuple[str, str]]) -> None:
+            async with db.execute(f"PRAGMA table_info({table})") as cur:
+                existing = {row[1] async for row in cur}
+            for col, definition in col_defs:
+                if col not in existing:
+                    await db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
+
+        # Migrate config table
+        await _add_missing_cols("config", [
+            ("login_token", "TEXT"),
+            ("exec_start_pid", "INTEGER DEFAULT NULL"),
+            ("notify_price_min", "REAL DEFAULT NULL"),
+            ("notify_price_max", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_min", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
+        # Migrate products table
+        await _add_missing_cols("products", [
+            ("region", "TEXT"),
+            ("billingcycle_zh", "TEXT"),
+            ("cycles_json", "TEXT"),
+        ])
+        # Migrate site_accounts table
+        await _add_missing_cols("site_accounts", [
+            ("api_key", "TEXT"),
+        ])
+        # Migrate visitor_users table (only if the table already existed before DDL run)
+        await _add_missing_cols("visitor_users", [
+            ("notify_price_min", "REAL DEFAULT NULL"),
+            ("notify_price_max", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_min", "REAL DEFAULT NULL"),
+            ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
         await db.commit()
 
 
@@ -512,3 +533,124 @@ async def get_active_site_account_token() -> Optional[str]:
         ) as cur:
             row = await cur.fetchone()
             return row[0] if row else None
+
+
+# ---------------------------------------------------------------------------
+# Visitor user helpers
+# ---------------------------------------------------------------------------
+
+async def get_visitor_users() -> list[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, username, label, is_active, created_at FROM visitor_users ORDER BY id"
+        ) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def create_visitor_user(username: str, password_hash: str, label: Optional[str] = None) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "INSERT INTO visitor_users (username, password_hash, label, created_at, is_active) VALUES (?,?,?,?,1)",
+            (username, password_hash, label, now),
+        )
+        await db.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+
+async def get_visitor_by_id(user_id: int) -> Optional[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, username, label, notify_channels, notify_price_min, notify_price_max, "
+            "notify_monthly_price_min, notify_monthly_price_max, created_at, is_active "
+            "FROM visitor_users WHERE id=?",
+            (user_id,),
+        ) as cur:
+            row = await cur.fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            d["notify_channels"] = json.loads(d.get("notify_channels") or "{}")
+            return d
+
+
+async def get_visitor_by_username(username: str) -> Optional[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, username, password_hash, label, notify_channels, "
+            "notify_price_min, notify_price_max, notify_monthly_price_min, notify_monthly_price_max, "
+            "created_at, is_active FROM visitor_users WHERE username=?",
+            (username,),
+        ) as cur:
+            row = await cur.fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            d["notify_channels"] = json.loads(d.get("notify_channels") or "{}")
+            return d
+
+
+async def delete_visitor_user(user_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM visitor_users WHERE id=?", (user_id,))
+        await db.commit()
+
+
+async def update_visitor_notify(
+    user_id: int,
+    notify_channels: dict[str, Any],
+    notify_price_min: Optional[float] = None,
+    notify_price_max: Optional[float] = None,
+    notify_monthly_price_min: Optional[float] = None,
+    notify_monthly_price_max: Optional[float] = None,
+) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE visitor_users SET notify_channels=?, notify_price_min=?, notify_price_max=?, "
+            "notify_monthly_price_min=?, notify_monthly_price_max=? WHERE id=?",
+            (
+                json.dumps(notify_channels, ensure_ascii=False),
+                notify_price_min,
+                notify_price_max,
+                notify_monthly_price_min,
+                notify_monthly_price_max,
+                user_id,
+            ),
+        )
+        await db.commit()
+
+
+async def update_visitor_password(user_id: int, password_hash: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE visitor_users SET password_hash=? WHERE id=?",
+            (password_hash, user_id),
+        )
+        await db.commit()
+
+
+async def get_active_visitor_notify_configs() -> list[dict[str, Any]]:
+    """Return notify config for all active visitor users that have at least one enabled channel."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, notify_channels, notify_price_min, notify_price_max, "
+            "notify_monthly_price_min, notify_monthly_price_max "
+            "FROM visitor_users WHERE is_active=1"
+        ) as cur:
+            rows = await cur.fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        channels = json.loads(d.get("notify_channels") or "{}")
+        has_enabled = any(
+            isinstance(v, dict) and v.get("enabled") for v in channels.values()
+        )
+        if has_enabled:
+            d["notify_channels"] = channels
+            result.append(d)
+    return result
