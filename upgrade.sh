@@ -83,6 +83,7 @@ if [[ -n "${SOURCE_REPO}" ]]; then
         database.py
         crawler.py
         notifier.py
+        agent.py
         configure.sh
         upgrade.sh
         uninstall.sh
