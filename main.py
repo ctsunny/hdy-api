@@ -31,6 +31,7 @@ import notifier
 from models import (
     AgentCreate,
     AgentHeartbeatRequest,
+    AgentNotifyUpdate,
     AgentReportRequest,
     AgentTaskAssign,
     ChangeLog,
@@ -701,10 +702,29 @@ async def assign_agent_task(agent_id: int, req: AgentTaskAssign) -> JSONResponse
     agent = await database.get_agent_by_id(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="客户端不存在")
-    # Include current active login token so the agent can scan
-    cfg = await database.get_config()
-    login_token = cfg.get("login_token") or cfg.get("login_cookie") or ""
-    task = {
+
+    # Resolve login token: prefer explicitly chosen site account, then active account
+    if req.site_account_id is not None:
+        login_token = await database.get_site_account_token_by_id(req.site_account_id) or ""
+    else:
+        cfg = await database.get_config()
+        login_token = cfg.get("login_token") or cfg.get("login_cookie") or ""
+
+    # Parse custom PID list (newline or comma-separated integers)
+    custom_pids: Optional[list[int]] = None
+    if req.pid_list and req.pid_list.strip():
+        parsed: list[int] = []
+        for part in req.pid_list.replace(",", "\n").splitlines():
+            part = part.strip()
+            if part:
+                try:
+                    parsed.append(int(part))
+                except ValueError:
+                    raise HTTPException(status_code=422, detail=f"无效的 PID 值: {part!r}")
+        if parsed:
+            custom_pids = sorted(set(parsed))
+
+    task: dict[str, Any] = {
         "type": "scan",
         "start_pid": req.start_pid,
         "end_pid": req.end_pid,
@@ -712,8 +732,23 @@ async def assign_agent_task(agent_id: int, req: AgentTaskAssign) -> JSONResponse
         "loop_enabled": req.loop_enabled,
         "login_token": login_token,
     }
+    if req.site_account_id is not None:
+        task["site_account_id"] = req.site_account_id
+    if custom_pids is not None:
+        task["custom_pids"] = custom_pids
+
     await database.update_agent_task(agent_id, task)
     return JSONResponse({"status": "ok", "message": "扫描任务已下发"})
+
+
+@app.put(f"{BASE_PATH}/api/agents/{{agent_id}}/notify", dependencies=[Depends(require_auth)])
+async def update_agent_notify(agent_id: int, req: AgentNotifyUpdate) -> JSONResponse:
+    """Set per-agent notification channels. Pass an empty dict to clear."""
+    agent = await database.get_agent_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="客户端不存在")
+    await database.update_agent_notify(agent_id, req.notify_channels)
+    return JSONResponse({"status": "ok", "message": "客户端通知配置已保存"})
 
 
 @app.delete(f"{BASE_PATH}/api/agents/{{agent_id}}/task", dependencies=[Depends(require_auth)])
@@ -876,11 +911,17 @@ async def agent_heartbeat(
     task = agent.get("task") or {"type": "idle"}
     task_type = task.get("type", "idle")
 
-    # If it's a scan task, refresh the login token before returning
+    # If it's a scan task, refresh the login token before returning.
+    # Use the specific site account if one was assigned; otherwise fall back to the active account.
     if task_type == "scan":
-        cfg = await database.get_config()
         task = dict(task)
-        task["login_token"] = cfg.get("login_token") or cfg.get("login_cookie") or ""
+        site_account_id: Optional[int] = task.get("site_account_id")
+        if site_account_id is not None:
+            refreshed = await database.get_site_account_token_by_id(site_account_id)
+            task["login_token"] = refreshed or ""
+        else:
+            cfg = await database.get_config()
+            task["login_token"] = cfg.get("login_token") or cfg.get("login_cookie") or ""
 
     return JSONResponse({"command": task_type, "task": task})
 
@@ -900,10 +941,17 @@ async def agent_report(
         req.changed_fields,
     )
 
-    # Send notification using global channels
+    # Send notification — prefer agent-specific channels, fall back to global
     if req.changed_fields:
-        cfg = await database.get_config()
-        notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
+        agent_channels: dict[str, Any] = agent.get("notify_channels") or {}
+        has_agent_channels = any(
+            isinstance(v, dict) and v.get("enabled") for v in agent_channels.values()
+        )
+        if has_agent_channels:
+            notify_channels: dict[str, Any] = agent_channels
+        else:
+            cfg = await database.get_config()
+            notify_channels = cfg.get("notify_channels", {})
         agent_name = agent.get("name") or "未知客户端"
         stock_map = {"in_stock": "有货", "out_of_stock": "无货", "unknown": "未知"}
         stock_zh = stock_map.get(req.stock_status or "", req.stock_status or "未知")

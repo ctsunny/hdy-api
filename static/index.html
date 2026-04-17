@@ -334,7 +334,7 @@
 
 <!-- Modal: Assign Task -->
 <div id="modal-agent-task" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:480px;max-width:96vw;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;">
     <h2 style="color:var(--accent2);margin-bottom:16px;font-size:16px;">📋 分配扫描任务</h2>
     <input type="hidden" id="task-agent-id">
     <div class="form-row">
@@ -350,10 +350,33 @@
         </select>
       </div>
     </div>
-    <p style="color:var(--muted);font-size:11px;margin-bottom:12px;">当前活跃的站点登录 Token 将自动附带到任务中。</p>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>自定义 PID 列表（每行一个，填写后将忽略起始/结束 PID）</label>
+      <textarea id="task-pid-list" rows="5" placeholder="1150&#10;1151&#10;1200" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px;resize:vertical;"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>使用账号 <span style="color:var(--muted);font-weight:normal;">（留空使用当前活跃账号）</span></label>
+      <select id="task-site-account" style="width:100%;box-sizing:border-box;">
+        <option value="">— 活跃账号 —</option>
+      </select>
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn btn-primary" onclick="doAssignTask()">下发任务</button>
       <button class="btn btn-sm" onclick="closeTaskModal()" style="background:#333;color:var(--text);">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agent Notify -->
+<div id="modal-agent-notify" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;">
+    <h2 style="color:var(--accent2);margin-bottom:4px;font-size:16px;">📡 客户端专属通知</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;" id="agent-notify-desc">为该客户端设置独立通知渠道。若不设置，将使用全局通知渠道。</p>
+    <input type="hidden" id="notify-agent-id">
+    <div id="agent-notify-channels"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveAgentNotify()">保存</button>
+      <button class="btn btn-sm" onclick="closeAgentNotifyModal()" style="background:#333;color:var(--text);">取消</button>
     </div>
   </div>
 </div>
@@ -986,7 +1009,12 @@ function agentStatusBadge(status) {
 function agentTaskBadge(task) {
   if (!task) return '<span class="badge badge-gray">空闲</span>';
   const t = task.type || 'idle';
-  if (t === 'scan') return `<span class="badge badge-blue">扫描 ${esc(task.start_pid)}–${esc(task.end_pid)}</span>`;
+  if (t === 'scan') {
+    if (task.custom_pids && task.custom_pids.length) {
+      return `<span class="badge badge-blue">扫描 ${task.custom_pids.length} 个PID</span>`;
+    }
+    return `<span class="badge badge-blue">扫描 ${esc(task.start_pid)}–${esc(task.end_pid)}</span>`;
+  }
   if (t === 'upgrade') return '<span class="badge badge-red">待升级</span>';
   return '<span class="badge badge-gray">空闲</span>';
 }
@@ -1013,8 +1041,9 @@ async function loadAgents() {
         <td style="font-size:11px;color:var(--muted);">${a.last_seen_at ? fmtDate(a.last_seen_at) : '—'}</td>
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-primary" onclick="showTaskModal(${parseInt(a.id)})">分配任务</button>
+            <button class="btn btn-sm btn-primary" onclick="showTaskModal(${parseInt(a.id)}, ${JSON.stringify(a.task || {}).replace(/"/g,'&quot;')})">分配任务</button>
             <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="clearAgentTask(${parseInt(a.id)})">停止</button>
+            <button class="btn btn-sm" style="background:#444;color:var(--text);" data-aid="${parseInt(a.id)}" data-aname="${esc(a.name || '客户端')}" onclick="showAgentNotifyModal(parseInt(this.dataset.aid), this.dataset.aname)">通知</button>
             <button class="btn btn-sm btn-warn" onclick="pushAgentUpgrade(${parseInt(a.id)})">升级</button>
             <button class="btn btn-sm" style="background:#222;color:var(--text);" data-aid="${parseInt(a.id)}" data-aname="${esc(a.name || '客户端')}" onclick="showAgentReports(parseInt(this.dataset.aid), this.dataset.aname)">报告</button>
             <button class="btn btn-sm btn-danger" onclick="deleteAgent(${parseInt(a.id)})">删除</button>
@@ -1066,8 +1095,29 @@ async function deleteAgent(id) {
   if (r.ok) loadAgents();
 }
 
-function showTaskModal(agentId) {
+function showTaskModal(agentId, existingTask) {
   document.getElementById('task-agent-id').value = agentId;
+  const task = existingTask || {};
+  document.getElementById('task-start-pid').value = task.start_pid || 1150;
+  document.getElementById('task-end-pid').value = task.end_pid || 1200;
+  document.getElementById('task-interval').value = task.interval_ms || 1500;
+  document.getElementById('task-loop').value = task.loop_enabled ? 'true' : 'false';
+  const pidList = (task.custom_pids && task.custom_pids.length) ? task.custom_pids.join('\n') : '';
+  document.getElementById('task-pid-list').value = pidList;
+  // Load site accounts into selector
+  const sel = document.getElementById('task-site-account');
+  sel.innerHTML = '<option value="">— 活跃账号 —</option>';
+  api('GET', '/api/site_accounts').then(r => r.json()).then(accounts => {
+    if (Array.isArray(accounts)) {
+      accounts.forEach(acc => {
+        const opt = document.createElement('option');
+        opt.value = acc.id;
+        opt.textContent = (acc.label ? acc.label + ' / ' : '') + acc.username + (acc.is_active ? ' ★' : '');
+        if (acc.id === task.site_account_id) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+  }).catch(() => {});
   document.getElementById('modal-agent-task').style.display = 'flex';
 }
 
@@ -1081,14 +1131,22 @@ async function doAssignTask() {
   const endPid = parseInt(document.getElementById('task-end-pid').value);
   const intervalMs = parseInt(document.getElementById('task-interval').value);
   const loopEnabled = document.getElementById('task-loop').value === 'true';
+  const pidListRaw = document.getElementById('task-pid-list').value.trim();
+  const siteAccountRaw = document.getElementById('task-site-account').value;
+
   if ([startPid, endPid, intervalMs].some(v => Number.isNaN(v))) {
     return toast('请填写有效的数字', 'error');
   }
-  if (startPid > endPid) return toast('起始 PID 不能大于结束 PID', 'error');
-  const r = await api('PUT', `/api/agents/${agentId}/task`, {
+  if (!pidListRaw && startPid > endPid) return toast('起始 PID 不能大于结束 PID', 'error');
+
+  const body = {
     start_pid: startPid, end_pid: endPid,
     interval_ms: intervalMs, loop_enabled: loopEnabled,
-  });
+  };
+  if (pidListRaw) body.pid_list = pidListRaw;
+  if (siteAccountRaw) body.site_account_id = parseInt(siteAccountRaw);
+
+  const r = await api('PUT', `/api/agents/${agentId}/task`, body);
   const d = await r.json().catch(() => ({}));
   toast(d.message || (r.ok ? '任务已下发' : '下发失败'), r.ok ? 'success' : 'error');
   if (r.ok) { closeTaskModal(); loadAgents(); }
@@ -1138,6 +1196,81 @@ async function showAgentReports(agentId, agentName) {
 
 function closeAgentReportsModal() {
   document.getElementById('modal-agent-reports').style.display = 'none';
+}
+
+// ── Agent notify modal ────────────────────────────────────────────────────
+let _agentNotifyCfg = {};
+
+function renderAgentNotifyChannels() {
+  const container = document.getElementById('agent-notify-channels');
+  container.innerHTML = CHANNELS.map(ch => {
+    const cfg = _agentNotifyCfg[ch.key] || {};
+    const enabled = cfg.enabled || false;
+    const fields = ch.fields.map(([k, label]) => `
+      <div class="form-group">
+        <label>${label}</label>
+        <input type="text" id="anc-${ch.key}-${k}" value="${cfg[k] || ''}" style="width:260px;">
+      </div>`).join('');
+    return `
+      <div class="channel-block">
+        <h3>
+          <div class="toggle ${enabled ? 'on' : ''}" id="antog-${ch.key}" onclick="toggleAgentChannel('${ch.key}')"></div>
+          ${ch.name}
+        </h3>
+        <div class="form-row">${fields}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleAgentChannel(key) {
+  const tog = document.getElementById('antog-' + key);
+  tog.classList.toggle('on');
+}
+
+function collectAgentNotifyConfig() {
+  const result = {};
+  CHANNELS.forEach(ch => {
+    const tog = document.getElementById('antog-' + ch.key);
+    if (!tog) return;
+    const enabled = tog.classList.contains('on');
+    const cfg = { enabled };
+    ch.fields.forEach(([k]) => {
+      const el = document.getElementById(`anc-${ch.key}-${k}`);
+      if (el && el.value) cfg[k] = el.value;
+    });
+    if (enabled || Object.keys(cfg).length > 1) result[ch.key] = cfg;
+  });
+  return result;
+}
+
+async function showAgentNotifyModal(agentId, agentName) {
+  document.getElementById('notify-agent-id').value = agentId;
+  document.getElementById('agent-notify-desc').textContent =
+    `为「${agentName}」设置独立通知渠道。若未启用任何渠道，将使用全局通知渠道。`;
+  // Load current agent notify_channels
+  const r = await api('GET', '/api/agents');
+  let channels = {};
+  if (r.ok) {
+    const agents = await r.json();
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) channels = agent.notify_channels || {};
+  }
+  _agentNotifyCfg = channels;
+  renderAgentNotifyChannels();
+  document.getElementById('modal-agent-notify').style.display = 'flex';
+}
+
+function closeAgentNotifyModal() {
+  document.getElementById('modal-agent-notify').style.display = 'none';
+}
+
+async function saveAgentNotify() {
+  const agentId = parseInt(document.getElementById('notify-agent-id').value);
+  const nc = collectAgentNotifyConfig();
+  const r = await api('PUT', `/api/agents/${agentId}/notify`, { notify_channels: nc });
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '通知配置已保存' : '保存失败'), r.ok ? 'success' : 'error');
+  if (r.ok) { closeAgentNotifyModal(); loadAgents(); }
 }
 
 // ── Visitor management ────────────────────────────────────────────────────

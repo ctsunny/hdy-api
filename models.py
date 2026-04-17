@@ -179,10 +179,20 @@ class AgentCreate(BaseModel):
 
 
 class AgentTaskAssign(BaseModel):
-    start_pid: int
-    end_pid: int
+    start_pid: int = 1150
+    end_pid: int = 1200
     interval_ms: int = 1500
     loop_enabled: bool = False
+    # Optional custom PID list (newline or comma-separated integers).
+    # When provided, the agent scans only these PIDs instead of the start–end range.
+    pid_list: Optional[str] = None
+    # Optional site account ID to use for authentication.
+    # When provided, the token of this account is embedded in the task.
+    site_account_id: Optional[int] = None
+
+
+class AgentNotifyUpdate(BaseModel):
+    notify_channels: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentHeartbeatRequest(BaseModel):

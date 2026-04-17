@@ -306,17 +306,27 @@ async def run_scan(server_url: str, token: str, task: dict[str, Any]) -> None:
     interval_ms = max(500, int(task.get("interval_ms", 1500)))
     loop_enabled = bool(task.get("loop_enabled", False))
     login_token: Optional[str] = task.get("login_token") or None
+    custom_pids: Optional[list[int]] = task.get("custom_pids") or None
+
+    # Determine the PID sequence to iterate
+    if custom_pids:
+        pid_sequence = list(custom_pids)
+        logger.info(
+            "Starting scan: custom PIDs %s (count=%d), interval=%dms, loop=%s",
+            pid_sequence[:5], len(pid_sequence), interval_ms, loop_enabled,
+        )
+    else:
+        pid_sequence = list(range(start_pid, end_pid + 1))
+        logger.info(
+            "Starting scan: pid %d–%d, interval=%dms, loop=%s",
+            start_pid, end_pid, interval_ms, loop_enabled,
+        )
 
     snapshots: dict[int, dict[str, Optional[str]]] = {}
 
-    logger.info(
-        "Starting scan: pid %d–%d, interval=%dms, loop=%s",
-        start_pid, end_pid, interval_ms, loop_enabled,
-    )
-
     try:
         while state.scanning:
-            for pid in range(start_pid, end_pid + 1):
+            for pid in pid_sequence:
                 if not state.scanning:
                     break
                 state.current_pid = pid
@@ -398,6 +408,8 @@ async def main() -> None:
                     task.get("start_pid") != last_task.get("start_pid")
                     or task.get("end_pid") != last_task.get("end_pid")
                     or task.get("loop_enabled") != last_task.get("loop_enabled")
+                    or task.get("interval_ms") != last_task.get("interval_ms")
+                    or task.get("custom_pids") != last_task.get("custom_pids")
                 )
                 if not state.scanning or task_changed:
                     # Stop existing scan if running
