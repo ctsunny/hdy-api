@@ -1016,7 +1016,7 @@ async function loadAgents() {
             <button class="btn btn-sm btn-primary" onclick="showTaskModal(${parseInt(a.id)})">分配任务</button>
             <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="clearAgentTask(${parseInt(a.id)})">停止</button>
             <button class="btn btn-sm btn-warn" onclick="pushAgentUpgrade(${parseInt(a.id)})">升级</button>
-            <button class="btn btn-sm" style="background:#222;color:var(--text);" onclick="showAgentReports(${parseInt(a.id)}, '${esc(a.name || '客户端')}')">报告</button>
+            <button class="btn btn-sm" style="background:#222;color:var(--text);" data-aid="${parseInt(a.id)}" data-aname="${esc(a.name || '客户端')}" onclick="showAgentReports(parseInt(this.dataset.aid), this.dataset.aname)">报告</button>
             <button class="btn btn-sm btn-danger" onclick="deleteAgent(${parseInt(a.id)})">删除</button>
           </div>
         </td>

@@ -662,7 +662,10 @@ async def list_agents() -> JSONResponse:
     # Don't expose raw token to frontend; show only first/last 4 chars
     for a in agents:
         tok = a.get("token", "")
-        a["token_hint"] = tok[:4] + "…" + tok[-4:] if len(tok) > 8 else tok
+        if len(tok) > 8:
+            a["token_hint"] = tok[:4] + "…" + tok[-4:]
+        else:
+            a["token_hint"] = "****"
         del a["token"]
     return JSONResponse(agents)
 

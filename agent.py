@@ -152,7 +152,7 @@ async def _fetch_product(pid: int, login_token: Optional[str]) -> Optional[dict[
     if not login_token:
         return None
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True, max_redirects=5) as client:
             r = await client.get(
                 f"{HDY_BASE_URL}/cart/set_config",
                 params={"pid": pid},
@@ -183,7 +183,7 @@ async def _check_stock(pid: int, billingcycle: Optional[str], login_token: Optio
         "billingcycle": billingcycle or "",
     }
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True, max_redirects=5) as client:
             r = await client.post(
                 f"{HDY_BASE_URL}/cart/add_to_shop",
                 json=payload,
@@ -345,7 +345,8 @@ async def run_scan(server_url: str, token: str, task: dict[str, Any]) -> None:
                         )
 
                 jitter = random.randint(-SCAN_JITTER_MS, SCAN_JITTER_MS) / 1000.0
-                await asyncio.sleep(max(0.1, interval_ms / 1000.0 + jitter))
+                # Jitter is applied on top of the base interval; never sleep less than 0.3s
+                await asyncio.sleep(max(0.3, interval_ms / 1000.0) + jitter)
 
             if not loop_enabled:
                 logger.info("Scan round complete (loop disabled), going idle.")
