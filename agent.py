@@ -36,6 +36,7 @@ CONFIG_PATH = Path(os.environ.get("HDY_AGENT_CONFIG", str(Path(__file__).parent 
 HDY_BASE_URL = "https://www.szhdy.com"
 HEARTBEAT_INTERVAL = 30  # seconds between heartbeats
 SCAN_JITTER_MS = 200      # ±ms random jitter added to each PID scan interval
+MAX_LOGGED_PIDS = 5       # max number of custom PIDs to show in a log message
 
 _HEADERS_BASE = {
     "User-Agent": (
@@ -313,7 +314,7 @@ async def run_scan(server_url: str, token: str, task: dict[str, Any]) -> None:
         pid_sequence = list(custom_pids)
         logger.info(
             "Starting scan: custom PIDs %s (count=%d), interval=%dms, loop=%s",
-            pid_sequence[:5], len(pid_sequence), interval_ms, loop_enabled,
+            pid_sequence[:MAX_LOGGED_PIDS], len(pid_sequence), interval_ms, loop_enabled,
         )
     else:
         pid_sequence = list(range(start_pid, end_pid + 1))

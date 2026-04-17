@@ -1209,7 +1209,7 @@ function renderAgentNotifyChannels() {
     const fields = ch.fields.map(([k, label]) => `
       <div class="form-group">
         <label>${label}</label>
-        <input type="text" id="anc-${ch.key}-${k}" value="${cfg[k] || ''}" style="width:260px;">
+        <input type="text" id="anc-${ch.key}-${k}" value="${esc(cfg[k] || '')}" style="width:260px;">
       </div>`).join('');
     return `
       <div class="channel-block">
