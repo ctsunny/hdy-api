@@ -563,6 +563,15 @@ async def get_active_site_account_token() -> Optional[str]:
             return row[0] if row else None
 
 
+async def get_site_account_token_by_id(account_id: int) -> Optional[str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT jwt_token FROM site_accounts WHERE id=?", (account_id,)
+        ) as cur:
+            row = await cur.fetchone()
+            return row[0] if row else None
+
+
 # ---------------------------------------------------------------------------
 # Visitor user helpers
 # ---------------------------------------------------------------------------
@@ -796,6 +805,15 @@ async def add_agent_report(
             "VALUES (?,?,?,?,?,?,?)",
             (agent_id, pid, name, price, stock_status,
              json.dumps(changed_fields, ensure_ascii=False), now),
+        )
+        await db.commit()
+
+
+async def update_agent_notify(agent_id: int, notify_channels: dict[str, Any]) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE agents SET notify_channels=? WHERE id=?",
+            (json.dumps(notify_channels, ensure_ascii=False), agent_id),
         )
         await db.commit()
 
