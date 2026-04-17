@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 import shutil
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -18,7 +19,7 @@ from typing import Any, Optional
 import httpx
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
@@ -28,6 +29,10 @@ import crawler
 import database
 import notifier
 from models import (
+    AgentCreate,
+    AgentHeartbeatRequest,
+    AgentReportRequest,
+    AgentTaskAssign,
     ChangeLog,
     ConfigUpdate,
     CrawlerStatus,
@@ -632,8 +637,294 @@ async def visitor_product_filter_options(
 
 
 # ---------------------------------------------------------------------------
-# Static files & SPA fallback
+# Agent — token authentication helper
 # ---------------------------------------------------------------------------
+
+async def _require_agent(
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> dict[str, Any]:
+    """Validate the agent bearer token and return the agent record."""
+    if creds is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    agent = await database.get_agent_by_token(creds.credentials)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid agent token")
+    return agent
+
+
+# ---------------------------------------------------------------------------
+# Admin — agent management routes
+# ---------------------------------------------------------------------------
+
+@app.get(f"{BASE_PATH}/api/agents", dependencies=[Depends(require_auth)])
+async def list_agents() -> JSONResponse:
+    agents = await database.get_agents()
+    # Don't expose raw token to frontend; show only first/last 4 chars
+    for a in agents:
+        tok = a.get("token", "")
+        a["token_hint"] = tok[:4] + "…" + tok[-4:] if len(tok) > 8 else tok
+        del a["token"]
+    return JSONResponse(agents)
+
+
+@app.post(f"{BASE_PATH}/api/agents", dependencies=[Depends(require_auth)])
+async def create_agent(req: AgentCreate, request: Request) -> JSONResponse:
+    token = secrets.token_urlsafe(32)
+    agent_id = await database.create_agent(req.name.strip() or "未命名客户端", token)
+    # Auto-detect server URL if not provided
+    if req.server_url:
+        server_url = req.server_url.rstrip("/")
+    else:
+        scheme = request.url.scheme
+        host = request.headers.get("host") or request.url.netloc
+        server_url = f"{scheme}://{host}{BASE_PATH}"
+    install_cmd = f'bash <(curl -fsSL "{server_url}/api/agent/setup/{token}")'
+    return JSONResponse({
+        "status": "ok",
+        "id": agent_id,
+        "install_cmd": install_cmd,
+        "message": "客户端已创建，请复制安装命令在目标服务器上执行",
+    })
+
+
+@app.delete(f"{BASE_PATH}/api/agents/{{agent_id}}", dependencies=[Depends(require_auth)])
+async def delete_agent(agent_id: int) -> JSONResponse:
+    await database.delete_agent(agent_id)
+    return JSONResponse({"status": "ok"})
+
+
+@app.put(f"{BASE_PATH}/api/agents/{{agent_id}}/task", dependencies=[Depends(require_auth)])
+async def assign_agent_task(agent_id: int, req: AgentTaskAssign) -> JSONResponse:
+    agent = await database.get_agent_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="客户端不存在")
+    # Include current active login token so the agent can scan
+    cfg = await database.get_config()
+    login_token = cfg.get("login_token") or cfg.get("login_cookie") or ""
+    task = {
+        "type": "scan",
+        "start_pid": req.start_pid,
+        "end_pid": req.end_pid,
+        "interval_ms": max(500, req.interval_ms),
+        "loop_enabled": req.loop_enabled,
+        "login_token": login_token,
+    }
+    await database.update_agent_task(agent_id, task)
+    return JSONResponse({"status": "ok", "message": "扫描任务已下发"})
+
+
+@app.delete(f"{BASE_PATH}/api/agents/{{agent_id}}/task", dependencies=[Depends(require_auth)])
+async def clear_agent_task(agent_id: int) -> JSONResponse:
+    agent = await database.get_agent_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="客户端不存在")
+    await database.update_agent_task(agent_id, {"type": "idle"})
+    return JSONResponse({"status": "ok", "message": "任务已清除"})
+
+
+@app.post(f"{BASE_PATH}/api/agents/{{agent_id}}/upgrade", dependencies=[Depends(require_auth)])
+async def push_agent_upgrade(agent_id: int) -> JSONResponse:
+    agent = await database.get_agent_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="客户端不存在")
+    await database.update_agent_task(agent_id, {"type": "upgrade"})
+    return JSONResponse({"status": "ok", "message": "升级命令已下发，客户端将在下次心跳时升级"})
+
+
+@app.get(f"{BASE_PATH}/api/agents/{{agent_id}}/reports", dependencies=[Depends(require_auth)])
+async def get_agent_reports(agent_id: int, limit: int = 50) -> JSONResponse:
+    limit = min(max(limit, 1), 200)
+    reports = await database.get_agent_reports(agent_id, limit)
+    return JSONResponse(reports)
+
+
+# ---------------------------------------------------------------------------
+# Public — agent setup script & agent script download
+# ---------------------------------------------------------------------------
+
+_AGENT_SCRIPT_PATH = Path(__file__).parent / "agent.py"
+
+
+@app.get(f"{BASE_PATH}/api/agent/setup/{{token}}", include_in_schema=False)
+async def agent_setup_script(token: str, request: Request) -> PlainTextResponse:
+    """Return a bash install script for the agent with the given token embedded."""
+    agent = await database.get_agent_by_token(token)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Invalid token")
+    scheme = request.url.scheme
+    host = request.headers.get("host") or request.url.netloc
+    server_url = f"{scheme}://{host}{BASE_PATH}"
+    script = _build_agent_setup_script(server_url, token)
+    return PlainTextResponse(script, media_type="text/x-shellscript")
+
+
+@app.get(f"{BASE_PATH}/api/agent/script", include_in_schema=False)
+async def get_agent_script(
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> PlainTextResponse:
+    """Return the agent.py script — requires valid agent token."""
+    if creds is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    agent = await database.get_agent_by_token(creds.credentials)
+    if not agent:
+        raise HTTPException(status_code=401, detail="Invalid agent token")
+    if not _AGENT_SCRIPT_PATH.exists():
+        raise HTTPException(status_code=404, detail="agent.py not found on server")
+    return PlainTextResponse(_AGENT_SCRIPT_PATH.read_text(encoding="utf-8"), media_type="text/x-python")
+
+
+def _build_agent_setup_script(server_url: str, token: str) -> str:
+    return f"""#!/usr/bin/env bash
+# HDY Agent — One-Click Installer
+# Generated by HDY Monitor
+set -euo pipefail
+
+RED='\\033[0;31m'; GREEN='\\033[0;32m'; CYAN='\\033[0;36m'; NC='\\033[0m'
+info()    {{ echo -e "${{CYAN}}[INFO]${{NC}}  $*"; }}
+success() {{ echo -e "${{GREEN}}[OK]${{NC}}    $*"; }}
+die()     {{ echo -e "${{RED}}[ERROR]${{NC}} $*"; exit 1; }}
+
+SERVER_URL="{server_url}"
+AGENT_TOKEN="{token}"
+INSTALL_DIR="/opt/hdy-agent"
+SERVICE_NAME="hdy-agent"
+SERVICE_FILE="/etc/systemd/system/${{SERVICE_NAME}}.service"
+
+[[ $EUID -ne 0 ]] && die "请使用 sudo 或 root 运行此脚本"
+
+info "安装系统依赖..."
+apt-get update -qq 2>/dev/null || true
+apt-get install -y -qq python3 python3-pip python3-venv curl 2>/dev/null || true
+
+info "创建安装目录 ${{INSTALL_DIR}}..."
+mkdir -p "${{INSTALL_DIR}}"
+
+info "下载 agent 脚本..."
+curl -fsSL "${{SERVER_URL}}/api/agent/script" \\
+  -H "Authorization: Bearer ${{AGENT_TOKEN}}" \\
+  -o "${{INSTALL_DIR}}/agent.py"
+
+info "写入配置文件..."
+cat > "${{INSTALL_DIR}}/config.json" <<JSON
+{{
+  "server_url": "${{SERVER_URL}}",
+  "token": "${{AGENT_TOKEN}}"
+}}
+JSON
+chmod 600 "${{INSTALL_DIR}}/config.json"
+
+info "创建 Python 虚拟环境..."
+python3 -m venv "${{INSTALL_DIR}}/venv"
+"${{INSTALL_DIR}}/venv/bin/pip" install -q --upgrade pip
+"${{INSTALL_DIR}}/venv/bin/pip" install -q httpx
+
+info "创建 systemd 服务..."
+cat > "${{SERVICE_FILE}}" <<SVC
+[Unit]
+Description=HDY Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${{INSTALL_DIR}}
+ExecStart=${{INSTALL_DIR}}/venv/bin/python ${{INSTALL_DIR}}/agent.py
+Restart=always
+RestartSec=10
+Environment=HDY_AGENT_CONFIG=${{INSTALL_DIR}}/config.json
+
+[Install]
+WantedBy=multi-user.target
+SVC
+
+systemctl daemon-reload
+systemctl enable "${{SERVICE_NAME}}" --quiet
+systemctl restart "${{SERVICE_NAME}}"
+success "HDY Agent 已安装并启动！"
+echo ""
+echo "  管理命令:"
+echo "    systemctl status ${{SERVICE_NAME}}   # 查看状态"
+echo "    journalctl -u ${{SERVICE_NAME}} -f   # 查看日志"
+echo "    systemctl stop ${{SERVICE_NAME}}     # 停止"
+echo ""
+"""
+
+
+# ---------------------------------------------------------------------------
+# Client — agent heartbeat & report (authenticated by agent token)
+# ---------------------------------------------------------------------------
+
+@app.post(f"{BASE_PATH}/api/agent/heartbeat")
+async def agent_heartbeat(
+    req: AgentHeartbeatRequest,
+    request: Request,
+    agent: dict[str, Any] = Depends(_require_agent),
+) -> JSONResponse:
+    """Agent calls this periodically; server returns the current command/task."""
+    ip_addr = request.headers.get("x-forwarded-for", request.client.host if request.client else None)
+    if ip_addr:
+        ip_addr = ip_addr.split(",")[0].strip()
+    await database.update_agent_heartbeat(
+        agent["id"],
+        req.status or "online",
+        req.version,
+        ip_addr,
+    )
+    task = agent.get("task") or {"type": "idle"}
+    task_type = task.get("type", "idle")
+
+    # If it's a scan task, refresh the login token before returning
+    if task_type == "scan":
+        cfg = await database.get_config()
+        task = dict(task)
+        task["login_token"] = cfg.get("login_token") or cfg.get("login_cookie") or ""
+
+    return JSONResponse({"command": task_type, "task": task})
+
+
+@app.post(f"{BASE_PATH}/api/agent/report")
+async def agent_report(
+    req: AgentReportRequest,
+    agent: dict[str, Any] = Depends(_require_agent),
+) -> JSONResponse:
+    """Agent reports a detected product change."""
+    await database.add_agent_report(
+        agent["id"],
+        req.pid,
+        req.name,
+        req.price,
+        req.stock_status,
+        req.changed_fields,
+    )
+
+    # Send notification using global channels
+    if req.changed_fields:
+        cfg = await database.get_config()
+        notify_channels: dict[str, Any] = cfg.get("notify_channels", {})
+        agent_name = agent.get("name") or "未知客户端"
+        stock_map = {"in_stock": "有货", "out_of_stock": "无货", "unknown": "未知"}
+        stock_zh = stock_map.get(req.stock_status or "", req.stock_status or "未知")
+        fields_zh = "、".join(req.changed_fields)
+        title = f"[客户端] PID {req.pid} 变化"
+        body = (
+            f"来源: {agent_name}\n"
+            f"PID: {req.pid}\n"
+            f"名称: {req.name or '—'}\n"
+            f"价格: {req.price or '—'}\n"
+            f"库存: {stock_zh}\n"
+            f"变化字段: {fields_zh}"
+        )
+        for ch_key, ch_cfg in notify_channels.items():
+            if not (isinstance(ch_cfg, dict) and ch_cfg.get("enabled")):
+                continue
+            try:
+                await notifier.send_channel(ch_key, ch_cfg, title=title, body=body)
+            except Exception:
+                pass
+
+    return JSONResponse({"status": "ok"})
+
+
 
 _ASSETS_DIR = _STATIC_DIR / "assets"
 

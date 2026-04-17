@@ -96,6 +96,30 @@ CREATE TABLE IF NOT EXISTS visitor_users (
     is_active                INTEGER DEFAULT 1
 );
 
+CREATE TABLE IF NOT EXISTS agents (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    name         TEXT,
+    token        TEXT UNIQUE NOT NULL,
+    status       TEXT DEFAULT 'offline',
+    version      TEXT,
+    ip_addr      TEXT,
+    last_seen_at TEXT,
+    task_json    TEXT DEFAULT '{"type":"idle"}',
+    notify_channels TEXT DEFAULT '{}',
+    created_at   TEXT
+);
+
+CREATE TABLE IF NOT EXISTS agent_reports (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id       INTEGER NOT NULL,
+    pid            INTEGER,
+    name           TEXT,
+    price          TEXT,
+    stock_status   TEXT,
+    changed_fields TEXT,
+    reported_at    TEXT
+);
+
 -- Ensure the single config row always exists
 INSERT OR IGNORE INTO config (id) VALUES (1);
 """
@@ -137,6 +161,10 @@ async def init_db() -> None:
             ("notify_price_max", "REAL DEFAULT NULL"),
             ("notify_monthly_price_min", "REAL DEFAULT NULL"),
             ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
+        # Migrate agents table
+        await _add_missing_cols("agents", [
+            ("notify_channels", "TEXT DEFAULT '{}'"),
         ])
         await db.commit()
 
@@ -654,3 +682,138 @@ async def get_active_visitor_notify_configs() -> list[dict[str, Any]]:
             d["notify_channels"] = channels
             result.append(d)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Agent helpers
+# ---------------------------------------------------------------------------
+
+async def create_agent(name: str, token: str) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "INSERT INTO agents (name, token, status, task_json, created_at) VALUES (?,?,?,?,?)",
+            (name, token, "offline", '{"type":"idle"}', now),
+        )
+        await db.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+
+async def get_agents() -> list[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, name, token, status, version, ip_addr, last_seen_at, task_json, notify_channels, created_at "
+            "FROM agents ORDER BY id"
+        ) as cur:
+            rows = await cur.fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                try:
+                    d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
+                except Exception:
+                    d["task"] = {"type": "idle"}
+                del d["task_json"]
+                try:
+                    d["notify_channels"] = json.loads(d.get("notify_channels") or "{}")
+                except Exception:
+                    d["notify_channels"] = {}
+                result.append(d)
+            return result
+
+
+async def get_agent_by_token(token: str) -> Optional[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM agents WHERE token=?", (token,)) as cur:
+            row = await cur.fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            try:
+                d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
+            except Exception:
+                d["task"] = {"type": "idle"}
+            del d["task_json"]
+            return d
+
+
+async def get_agent_by_id(agent_id: int) -> Optional[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)) as cur:
+            row = await cur.fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            try:
+                d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
+            except Exception:
+                d["task"] = {"type": "idle"}
+            del d["task_json"]
+            return d
+
+
+async def update_agent_heartbeat(agent_id: int, status: str, version: Optional[str], ip_addr: Optional[str]) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE agents SET status=?, version=?, ip_addr=?, last_seen_at=? WHERE id=?",
+            (status, version, ip_addr, now, agent_id),
+        )
+        await db.commit()
+
+
+async def update_agent_task(agent_id: int, task: dict[str, Any]) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE agents SET task_json=? WHERE id=?",
+            (json.dumps(task, ensure_ascii=False), agent_id),
+        )
+        await db.commit()
+
+
+async def delete_agent(agent_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
+        await db.execute("DELETE FROM agent_reports WHERE agent_id=?", (agent_id,))
+        await db.commit()
+
+
+async def add_agent_report(
+    agent_id: int,
+    pid: int,
+    name: Optional[str],
+    price: Optional[str],
+    stock_status: Optional[str],
+    changed_fields: list[str],
+) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO agent_reports (agent_id, pid, name, price, stock_status, changed_fields, reported_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (agent_id, pid, name, price, stock_status,
+             json.dumps(changed_fields, ensure_ascii=False), now),
+        )
+        await db.commit()
+
+
+async def get_agent_reports(agent_id: int, limit: int = 50) -> list[dict[str, Any]]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM agent_reports WHERE agent_id=? ORDER BY reported_at DESC LIMIT ?",
+            (agent_id, limit),
+        ) as cur:
+            rows = await cur.fetchall()
+            result = []
+            for row in rows:
+                d = dict(row)
+                try:
+                    d["changed_fields"] = json.loads(d.get("changed_fields") or "[]")
+                except Exception:
+                    d["changed_fields"] = []
+                result.append(d)
+            return result

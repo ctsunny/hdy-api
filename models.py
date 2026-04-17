@@ -167,3 +167,32 @@ class VisitorNotifyUpdate(BaseModel):
 
 class VisitorPasswordUpdate(BaseModel):
     password: str
+
+
+# ---------------------------------------------------------------------------
+# Agent client models
+# ---------------------------------------------------------------------------
+
+class AgentCreate(BaseModel):
+    name: str
+    server_url: Optional[str] = None
+
+
+class AgentTaskAssign(BaseModel):
+    start_pid: int
+    end_pid: int
+    interval_ms: int = 1500
+    loop_enabled: bool = False
+
+
+class AgentHeartbeatRequest(BaseModel):
+    version: Optional[str] = None
+    status: Optional[str] = None
+
+
+class AgentReportRequest(BaseModel):
+    pid: int
+    name: Optional[str] = None
+    price: Optional[str] = None
+    stock_status: Optional[str] = None
+    changed_fields: list[str] = Field(default_factory=list)

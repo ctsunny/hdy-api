@@ -102,6 +102,7 @@
   <button onclick="showTab('tab-changes', this)">🔔 变化记录</button>
   <button onclick="showTab('tab-config', this)">⚙️ 配置</button>
   <button onclick="showTab('tab-notify', this)">📡 通知渠道</button>
+  <button onclick="showTab('tab-agents', this)">🖥️ 客户端</button>
   <button onclick="showTab('tab-visitors', this)">👥 访客管理</button>
 </nav>
 
@@ -278,6 +279,85 @@
   </div>
 </div>
 
+<!-- Agents -->
+<div class="tab" id="tab-agents">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2>客户端管理</h2>
+      <button class="btn btn-primary" onclick="showCreateAgentModal()">➕ 生成安装命令</button>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+      通过生成安装命令，可在任意服务器上部署扫描客户端。客户端自动连接本服务器，执行定制化 PID 扫描并将结果反馈至此页面。
+    </p>
+    <div id="agents-list"></div>
+  </div>
+</div>
+
+<!-- Modal: Create Agent -->
+<div id="modal-create-agent" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:520px;max-width:96vw;">
+    <h2 style="color:var(--accent2);margin-bottom:16px;font-size:16px;">➕ 生成客户端安装命令</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>客户端名称</label>
+        <input type="text" id="agent-name" placeholder="如：服务器1" style="width:200px;">
+      </div>
+      <div class="form-group">
+        <label>服务器地址 (可选，留空自动检测)</label>
+        <input type="text" id="agent-server-url" placeholder="http://1.2.3.4:8080/abc" style="width:260px;">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="doCreateAgent()" style="margin-bottom:14px;">生成</button>
+    <div id="agent-install-cmd-box" style="display:none;">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:6px;">在目标服务器上以 root 运行以下命令（需要 sudo）：</p>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <pre id="agent-install-cmd" style="flex:1;margin:0;word-break:break-all;white-space:pre-wrap;font-size:12px;max-height:80px;"></pre>
+        <button class="btn btn-sm" onclick="copyAgentCmd()" style="background:#333;color:var(--text);flex-shrink:0;">复制</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:right;">
+      <button class="btn btn-sm" onclick="closeCreateAgentModal()" style="background:#333;color:var(--text);">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agent Reports -->
+<div id="modal-agent-reports" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:680px;max-width:96vw;max-height:80vh;overflow-y:auto;">
+    <h2 style="color:var(--accent2);margin-bottom:16px;font-size:16px;">📋 客户端扫描报告</h2>
+    <div id="agent-reports-content"></div>
+    <div style="margin-top:16px;text-align:right;">
+      <button class="btn btn-sm" onclick="closeAgentReportsModal()" style="background:#333;color:var(--text);">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Assign Task -->
+<div id="modal-agent-task" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px;width:480px;max-width:96vw;">
+    <h2 style="color:var(--accent2);margin-bottom:16px;font-size:16px;">📋 分配扫描任务</h2>
+    <input type="hidden" id="task-agent-id">
+    <div class="form-row">
+      <div class="form-group"><label>起始 PID</label><input type="number" id="task-start-pid" value="1150" style="width:120px;"></div>
+      <div class="form-group"><label>结束 PID</label><input type="number" id="task-end-pid" value="1200" style="width:120px;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>间隔 (ms)</label><input type="number" id="task-interval" value="1500" style="width:120px;"></div>
+      <div class="form-group"><label>循环模式</label>
+        <select id="task-loop" style="width:120px;">
+          <option value="false">关闭</option>
+          <option value="true">开启</option>
+        </select>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:11px;margin-bottom:12px;">当前活跃的站点登录 Token 将自动附带到任务中。</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="doAssignTask()">下发任务</button>
+      <button class="btn btn-sm" onclick="closeTaskModal()" style="background:#333;color:var(--text);">取消</button>
+    </div>
+  </div>
+</div>
+
 <!-- Visitors -->
 <div class="tab" id="tab-visitors">
   <div class="card">
@@ -356,6 +436,7 @@ function showTab(id, btn) {
   if (id === 'tab-changes') loadChanges();
   if (id === 'tab-config') loadConfig();
   if (id === 'tab-notify') loadNotifyConfig();
+  if (id === 'tab-agents') loadAgents();
   if (id === 'tab-visitors') loadVisitors();
 }
 
@@ -893,6 +974,170 @@ async function uploadRestore(input) {
     toast('恢复失败: ' + e.message, 'error');
   }
   input.value = '';
+}
+
+// ── Agent management ──────────────────────────────────────────────────────
+
+function agentStatusBadge(status) {
+  if (status === 'online' || status === 'scanning') return `<span class="badge badge-green">${esc(status === 'scanning' ? '扫描中' : '在线')}</span>`;
+  return '<span class="badge badge-gray">离线</span>';
+}
+
+function agentTaskBadge(task) {
+  if (!task) return '<span class="badge badge-gray">空闲</span>';
+  const t = task.type || 'idle';
+  if (t === 'scan') return `<span class="badge badge-blue">扫描 ${esc(task.start_pid)}–${esc(task.end_pid)}</span>`;
+  if (t === 'upgrade') return '<span class="badge badge-red">待升级</span>';
+  return '<span class="badge badge-gray">空闲</span>';
+}
+
+async function loadAgents() {
+  const r = await api('GET', '/api/agents');
+  if (!r.ok) return;
+  const agents = await r.json();
+  const el = document.getElementById('agents-list');
+  if (!el) return;
+  if (!agents || agents.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无已注册的客户端。点击「生成安装命令」添加第一个客户端。</p>';
+    return;
+  }
+  el.innerHTML = `<table style="width:100%;">
+    <thead><tr><th>名称</th><th>状态</th><th>版本</th><th>IP</th><th>当前任务</th><th>最后心跳</th><th>操作</th></tr></thead>
+    <tbody>${agents.map(a => `
+      <tr>
+        <td style="font-weight:500;">${esc(a.name) || '未命名'}</td>
+        <td>${agentStatusBadge(a.status)}</td>
+        <td style="font-size:11px;color:var(--muted);">${esc(a.version) || '—'}</td>
+        <td style="font-size:11px;color:var(--muted);">${esc(a.ip_addr) || '—'}</td>
+        <td>${agentTaskBadge(a.task)}</td>
+        <td style="font-size:11px;color:var(--muted);">${a.last_seen_at ? fmtDate(a.last_seen_at) : '—'}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" onclick="showTaskModal(${parseInt(a.id)})">分配任务</button>
+            <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="clearAgentTask(${parseInt(a.id)})">停止</button>
+            <button class="btn btn-sm btn-warn" onclick="pushAgentUpgrade(${parseInt(a.id)})">升级</button>
+            <button class="btn btn-sm" style="background:#222;color:var(--text);" onclick="showAgentReports(${parseInt(a.id)}, '${esc(a.name || '客户端')}')">报告</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteAgent(${parseInt(a.id)})">删除</button>
+          </div>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function showCreateAgentModal() {
+  document.getElementById('agent-name').value = '';
+  document.getElementById('agent-server-url').value = '';
+  document.getElementById('agent-install-cmd-box').style.display = 'none';
+  document.getElementById('modal-create-agent').style.display = 'flex';
+}
+
+function closeCreateAgentModal() {
+  document.getElementById('modal-create-agent').style.display = 'none';
+  loadAgents();
+}
+
+async function doCreateAgent() {
+  const name = document.getElementById('agent-name').value.trim();
+  const serverUrl = document.getElementById('agent-server-url').value.trim();
+  if (!name) return toast('请输入客户端名称', 'error');
+  const body = { name };
+  if (serverUrl) body.server_url = serverUrl;
+  const r = await api('POST', '/api/agents', body);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return toast(d.detail || d.message || '创建失败', 'error');
+  document.getElementById('agent-install-cmd').textContent = d.install_cmd || '';
+  document.getElementById('agent-install-cmd-box').style.display = '';
+  toast(d.message || '安装命令已生成', 'success');
+}
+
+function copyAgentCmd() {
+  const cmd = document.getElementById('agent-install-cmd').textContent;
+  if (!cmd) return;
+  navigator.clipboard.writeText(cmd).then(
+    () => toast('命令已复制到剪贴板', 'success'),
+    () => toast('复制失败，请手动选择文本复制', 'error'),
+  );
+}
+
+async function deleteAgent(id) {
+  if (!confirm('确定删除该客户端及其所有报告数据？')) return;
+  const r = await api('DELETE', `/api/agents/${id}`);
+  toast(r.ok ? '客户端已删除' : '删除失败', r.ok ? 'success' : 'error');
+  if (r.ok) loadAgents();
+}
+
+function showTaskModal(agentId) {
+  document.getElementById('task-agent-id').value = agentId;
+  document.getElementById('modal-agent-task').style.display = 'flex';
+}
+
+function closeTaskModal() {
+  document.getElementById('modal-agent-task').style.display = 'none';
+}
+
+async function doAssignTask() {
+  const agentId = parseInt(document.getElementById('task-agent-id').value);
+  const startPid = parseInt(document.getElementById('task-start-pid').value);
+  const endPid = parseInt(document.getElementById('task-end-pid').value);
+  const intervalMs = parseInt(document.getElementById('task-interval').value);
+  const loopEnabled = document.getElementById('task-loop').value === 'true';
+  if ([startPid, endPid, intervalMs].some(v => Number.isNaN(v))) {
+    return toast('请填写有效的数字', 'error');
+  }
+  if (startPid > endPid) return toast('起始 PID 不能大于结束 PID', 'error');
+  const r = await api('PUT', `/api/agents/${agentId}/task`, {
+    start_pid: startPid, end_pid: endPid,
+    interval_ms: intervalMs, loop_enabled: loopEnabled,
+  });
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '任务已下发' : '下发失败'), r.ok ? 'success' : 'error');
+  if (r.ok) { closeTaskModal(); loadAgents(); }
+}
+
+async function clearAgentTask(agentId) {
+  if (!confirm('确定停止该客户端的当前任务？')) return;
+  const r = await api('DELETE', `/api/agents/${agentId}/task`);
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '任务已清除' : '操作失败'), r.ok ? 'success' : 'error');
+  if (r.ok) loadAgents();
+}
+
+async function pushAgentUpgrade(agentId) {
+  if (!confirm('确定推送升级命令？客户端将在下次心跳时自动下载最新版本并重启。')) return;
+  const r = await api('POST', `/api/agents/${agentId}/upgrade`);
+  const d = await r.json().catch(() => ({}));
+  toast(d.message || (r.ok ? '升级命令已下发' : '操作失败'), r.ok ? 'success' : 'error');
+  if (r.ok) loadAgents();
+}
+
+async function showAgentReports(agentId, agentName) {
+  const el = document.getElementById('agent-reports-content');
+  el.innerHTML = '<p style="color:var(--muted);font-size:12px;">加载中...</p>';
+  document.getElementById('modal-agent-reports').style.display = 'flex';
+  const r = await api('GET', `/api/agents/${agentId}/reports?limit=50`);
+  if (!r.ok) { el.innerHTML = '<p style="color:var(--danger);">加载失败</p>'; return; }
+  const reports = await r.json();
+  if (!reports || reports.length === 0) {
+    el.innerHTML = `<p style="color:var(--muted);font-size:12px;">「${esc(agentName)}」暂无扫描报告</p>`;
+    return;
+  }
+  el.innerHTML = `<p style="color:var(--muted);font-size:12px;margin-bottom:8px;">「${esc(agentName)}」最近 ${reports.length} 条报告</p>
+  <table style="width:100%;">
+    <thead><tr><th>时间</th><th>PID</th><th>名称</th><th>价格</th><th>库存</th><th>变化字段</th></tr></thead>
+    <tbody>${reports.map(rep => `
+      <tr>
+        <td style="font-size:11px;color:var(--muted);">${fmtDate(rep.reported_at)}</td>
+        <td>${esc(rep.pid)}</td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(rep.name)}">${esc(rep.name) || '—'}</td>
+        <td>${esc(rep.price) || '—'}</td>
+        <td>${stockBadge(rep.stock_status)}</td>
+        <td style="font-size:11px;color:var(--muted);">${esc((rep.changed_fields || []).join('、'))}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function closeAgentReportsModal() {
+  document.getElementById('modal-agent-reports').style.display = 'none';
 }
 
 // ── Visitor management ────────────────────────────────────────────────────
