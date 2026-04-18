@@ -98,28 +98,15 @@ CREATE TABLE IF NOT EXISTS visitor_users (
     is_active                INTEGER DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS agents (
+CREATE TABLE IF NOT EXISTS cluster_nodes (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    name         TEXT,
-    token        TEXT UNIQUE NOT NULL,
-    status       TEXT DEFAULT 'offline',
+    label        TEXT,
+    url          TEXT NOT NULL,
+    role         TEXT DEFAULT 'slave',
+    status       TEXT DEFAULT 'unknown',
     version      TEXT,
-    ip_addr      TEXT,
     last_seen_at TEXT,
-    task_json    TEXT DEFAULT '{"type":"idle"}',
-    notify_channels TEXT DEFAULT '{}',
     created_at   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS agent_reports (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent_id       INTEGER NOT NULL,
-    pid            INTEGER,
-    name           TEXT,
-    price          TEXT,
-    stock_status   TEXT,
-    changed_fields TEXT,
-    reported_at    TEXT
 );
 
 -- Ensure the single config row always exists
@@ -165,10 +152,6 @@ async def init_db() -> None:
             ("notify_price_max", "REAL DEFAULT NULL"),
             ("notify_monthly_price_min", "REAL DEFAULT NULL"),
             ("notify_monthly_price_max", "REAL DEFAULT NULL"),
-        ])
-        # Migrate agents table
-        await _add_missing_cols("agents", [
-            ("notify_channels", "TEXT DEFAULT '{}'"),
         ])
         await db.commit()
 
@@ -702,144 +685,148 @@ async def get_active_visitor_notify_configs() -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Agent helpers
+# Cluster node helpers
 # ---------------------------------------------------------------------------
 
-async def create_agent(name: str, token: str) -> int:
+async def add_cluster_node(label: Optional[str], url: str, role: str = "slave") -> int:
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
-            "INSERT INTO agents (name, token, status, task_json, created_at) VALUES (?,?,?,?,?)",
-            (name, token, "offline", '{"type":"idle"}', now),
+            "INSERT INTO cluster_nodes (label, url, role, status, created_at) VALUES (?,?,?,?,?)",
+            (label, url, role, "unknown", now),
         )
         await db.commit()
         return cur.lastrowid  # type: ignore[return-value]
 
 
-async def get_agents() -> list[dict[str, Any]]:
+async def get_cluster_nodes() -> list[dict[str, Any]]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, name, token, status, version, ip_addr, last_seen_at, task_json, notify_channels, created_at "
-            "FROM agents ORDER BY id"
+            "SELECT id, label, url, role, status, version, last_seen_at, created_at "
+            "FROM cluster_nodes ORDER BY id"
         ) as cur:
             rows = await cur.fetchall()
-            result = []
-            for row in rows:
-                d = dict(row)
-                try:
-                    d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
-                except Exception:
-                    d["task"] = {"type": "idle"}
-                del d["task_json"]
-                try:
-                    d["notify_channels"] = json.loads(d.get("notify_channels") or "{}")
-                except Exception:
-                    d["notify_channels"] = {}
-                result.append(d)
-            return result
+            return [dict(r) for r in rows]
 
 
-async def get_agent_by_token(token: str) -> Optional[dict[str, Any]]:
+async def get_cluster_node_by_id(node_id: int) -> Optional[dict[str, Any]]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM agents WHERE token=?", (token,)) as cur:
+        async with db.execute(
+            "SELECT id, label, url, role, status, version, last_seen_at, created_at "
+            "FROM cluster_nodes WHERE id=?",
+            (node_id,),
+        ) as cur:
             row = await cur.fetchone()
-            if row is None:
-                return None
-            d = dict(row)
-            try:
-                d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
-            except Exception:
-                d["task"] = {"type": "idle"}
-            del d["task_json"]
-            return d
+            return dict(row) if row else None
 
 
-async def get_agent_by_id(agent_id: int) -> Optional[dict[str, Any]]:
+async def delete_cluster_node(node_id: int) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)) as cur:
-            row = await cur.fetchone()
-            if row is None:
-                return None
-            d = dict(row)
-            try:
-                d["task"] = json.loads(d.get("task_json") or '{"type":"idle"}')
-            except Exception:
-                d["task"] = {"type": "idle"}
-            del d["task_json"]
-            return d
-
-
-async def update_agent_heartbeat(agent_id: int, status: str, version: Optional[str], ip_addr: Optional[str]) -> None:
-    now = datetime.now(timezone.utc).isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE agents SET status=?, version=?, ip_addr=?, last_seen_at=? WHERE id=?",
-            (status, version, ip_addr, now, agent_id),
-        )
+        await db.execute("DELETE FROM cluster_nodes WHERE id=?", (node_id,))
         await db.commit()
 
 
-async def update_agent_task(agent_id: int, task: dict[str, Any]) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE agents SET task_json=? WHERE id=?",
-            (json.dumps(task, ensure_ascii=False), agent_id),
-        )
-        await db.commit()
-
-
-async def delete_agent(agent_id: int) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
-        await db.execute("DELETE FROM agent_reports WHERE agent_id=?", (agent_id,))
-        await db.commit()
-
-
-async def add_agent_report(
-    agent_id: int,
-    pid: int,
-    name: Optional[str],
-    price: Optional[str],
-    stock_status: Optional[str],
-    changed_fields: list[str],
+async def update_cluster_node_status(
+    node_id: int,
+    status: str,
+    version: Optional[str] = None,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "INSERT INTO agent_reports (agent_id, pid, name, price, stock_status, changed_fields, reported_at) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (agent_id, pid, name, price, stock_status,
-             json.dumps(changed_fields, ensure_ascii=False), now),
+            "UPDATE cluster_nodes SET status=?, version=?, last_seen_at=? WHERE id=?",
+            (status, version, now, node_id),
         )
         await db.commit()
 
 
-async def update_agent_notify(agent_id: int, notify_channels: dict[str, Any]) -> None:
+async def bulk_upsert_products(rows: list[dict[str, Any]]) -> None:
+    """Upsert a batch of product rows received from a sync payload."""
+    if not rows:
+        return
+    now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE agents SET notify_channels=? WHERE id=?",
-            (json.dumps(notify_channels, ensure_ascii=False), agent_id),
-        )
+        for p in rows:
+            pid = p.get("pid")
+            if not pid:
+                continue
+            await db.execute(
+                """INSERT INTO products
+                   (pid, name, price, stock_status, raw_data,
+                    first_seen_at, last_checked_at, last_changed_at,
+                    region, billingcycle_zh, cycles_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(pid) DO UPDATE SET
+                       name=excluded.name,
+                       price=excluded.price,
+                       stock_status=excluded.stock_status,
+                       raw_data=excluded.raw_data,
+                       last_checked_at=excluded.last_checked_at,
+                       last_changed_at=excluded.last_changed_at,
+                       region=excluded.region,
+                       billingcycle_zh=excluded.billingcycle_zh,
+                       cycles_json=excluded.cycles_json""",
+                (
+                    pid,
+                    p.get("name"),
+                    p.get("price"),
+                    p.get("stock_status"),
+                    p.get("raw_data"),
+                    p.get("first_seen_at") or now,
+                    p.get("last_checked_at") or now,
+                    p.get("last_changed_at") or now,
+                    p.get("region"),
+                    p.get("billingcycle_zh"),
+                    p.get("cycles_json"),
+                ),
+            )
         await db.commit()
 
 
-async def get_agent_reports(agent_id: int, limit: int = 50) -> list[dict[str, Any]]:
+async def bulk_insert_changes(rows: list[dict[str, Any]]) -> None:
+    """Insert change_log rows from a sync payload (skip duplicates by id)."""
+    if not rows:
+        return
+    async with aiosqlite.connect(DB_PATH) as db:
+        for c in rows:
+            row_id = c.get("id")
+            if row_id is None:
+                continue
+            await db.execute(
+                """INSERT OR IGNORE INTO change_log (id, pid, field_name, old_value, new_value, changed_at)
+                   VALUES (?,?,?,?,?,?)""",
+                (
+                    row_id,
+                    c.get("pid"),
+                    c.get("field_name"),
+                    c.get("old_value"),
+                    c.get("new_value"),
+                    c.get("changed_at"),
+                ),
+            )
+        await db.commit()
+
+
+async def export_products_for_sync(limit: int = 5000) -> list[dict[str, Any]]:
+    """Return recent products for sync payload."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT * FROM agent_reports WHERE agent_id=? ORDER BY reported_at DESC LIMIT ?",
-            (agent_id, limit),
+            "SELECT * FROM products ORDER BY last_changed_at DESC LIMIT ?", (limit,)
         ) as cur:
             rows = await cur.fetchall()
-            result = []
-            for row in rows:
-                d = dict(row)
-                try:
-                    d["changed_fields"] = json.loads(d.get("changed_fields") or "[]")
-                except Exception:
-                    d["changed_fields"] = []
-                result.append(d)
-            return result
+            return [dict(r) for r in rows]
+
+
+async def export_changes_for_sync(limit: int = 1000) -> list[dict[str, Any]]:
+    """Return recent change_log rows for sync payload."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM change_log ORDER BY changed_at DESC LIMIT ?", (limit,)
+        ) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+

@@ -29,15 +29,14 @@ import crawler
 import database
 import notifier
 from models import (
-    AgentCreate,
-    AgentHeartbeatRequest,
-    AgentNotifyUpdate,
-    AgentReportRequest,
-    AgentTaskAssign,
     ChangeLog,
+    ClusterProxyRequest,
+    ClusterSyncRequest,
+    ClusterVerifyAdminRequest,
     ConfigUpdate,
     CrawlerStatus,
     LoginRequest,
+    NodeCreate,
     NotifyTestRequest,
     PaginatedChanges,
     PaginatedProducts,
@@ -76,6 +75,8 @@ _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _SECRET_KEY: str = _runtime.get("secret_key", "changeme")
 _ALGORITHM = "HS256"
 _TOKEN_EXPIRE_HOURS = 24
+_CLUSTER_SECRET: str = _runtime.get("cluster_secret", "")
+_NODE_ROLE: str = _runtime.get("node_role", "master")
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -132,8 +133,15 @@ def _verify_token(token: str) -> bool:
 async def require_auth(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
 ) -> None:
-    if creds is None or not _verify_token(creds.credentials):
+    if creds is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    # Accept admin JWT
+    if _verify_token(creds.credentials):
+        return
+    # Accept cluster secret for node-to-node calls
+    if _CLUSTER_SECRET and creds.credentials == _CLUSTER_SECRET:
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
 
 # ---------------------------------------------------------------------------
@@ -179,10 +187,39 @@ async def login(req: LoginRequest) -> TokenResponse:
     stored_hash: str = _runtime.get("admin_password_hash", "")
     username: str = _runtime.get("admin_username", "admin")
 
-    if req.username != username or not _pwd_ctx.verify(req.password, stored_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Local authentication
+    if req.username == username and _pwd_ctx.verify(req.password, stored_hash):
+        return TokenResponse(access_token=_create_token())
 
-    return TokenResponse(access_token=_create_token())
+    # Federated authentication: try registered peer nodes
+    if _CLUSTER_SECRET:
+        nodes = await database.get_cluster_nodes()
+        for node in nodes:
+            try:
+                async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                    r = await client.post(
+                        node["url"].rstrip("/") + "/api/cluster/verify_admin",
+                        json={"username": req.username, "password": req.password},
+                        headers={
+                            "Authorization": f"Bearer {_CLUSTER_SECRET}",
+                            "Content-Type": "application/json",
+                        },
+                    )
+                    if r.status_code == 200:
+                        body = r.json()
+                        if body.get("valid"):
+                            # Issue a local token for this cluster admin
+                            expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
+                            token = jwt.encode(
+                                {"sub": "admin", "exp": expire, "cluster_admin": True},
+                                _SECRET_KEY,
+                                algorithm=_ALGORITHM,
+                            )
+                            return TokenResponse(access_token=token)
+            except Exception:
+                continue
+
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +332,8 @@ async def get_config() -> JSONResponse:
     cfg_out["has_cookie"] = bool(cfg.get("login_cookie"))
     cfg_out["has_token"] = bool(cfg.get("login_token"))
     cfg_out["site_title"] = cfg.get("site_title") or ""
+    cfg_out["node_role"] = _NODE_ROLE
+    cfg_out["has_cluster_secret"] = bool(_CLUSTER_SECRET)
     return JSONResponse(cfg_out)
 
 
@@ -643,343 +682,198 @@ async def visitor_product_filter_options(
 
 
 # ---------------------------------------------------------------------------
-# Agent — token authentication helper
+# Cluster — inter-node communication routes (authenticated by cluster_secret)
 # ---------------------------------------------------------------------------
 
-async def _require_agent(
+def _require_cluster_secret(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
-) -> dict[str, Any]:
-    """Validate the agent bearer token and return the agent record."""
-    if creds is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    agent = await database.get_agent_by_token(creds.credentials)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid agent token")
-    return agent
+) -> None:
+    """Dependency: only accepts requests carrying the shared cluster_secret."""
+    if not _CLUSTER_SECRET:
+        raise HTTPException(status_code=503, detail="Cluster not configured on this node")
+    if creds is None or creds.credentials != _CLUSTER_SECRET:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid cluster secret")
 
 
-# ---------------------------------------------------------------------------
-# Admin — agent management routes
-# ---------------------------------------------------------------------------
-
-@app.get(f"{BASE_PATH}/api/agents", dependencies=[Depends(require_auth)])
-async def list_agents() -> JSONResponse:
-    agents = await database.get_agents()
-    # Don't expose raw token to frontend; show only first/last 4 chars
-    for a in agents:
-        tok = a.get("token", "")
-        if len(tok) > 8:
-            a["token_hint"] = tok[:4] + "…" + tok[-4:]
-        else:
-            a["token_hint"] = "****"
-        del a["token"]
-    return JSONResponse(agents)
-
-
-@app.post(f"{BASE_PATH}/api/agents", dependencies=[Depends(require_auth)])
-async def create_agent(req: AgentCreate, request: Request) -> JSONResponse:
-    token = secrets.token_urlsafe(32)
-    agent_id = await database.create_agent(req.name.strip() or "未命名客户端", token)
-    # Auto-detect server URL if not provided
-    if req.server_url:
-        server_url = req.server_url.rstrip("/")
-    else:
-        scheme = request.url.scheme
-        host = request.headers.get("host") or request.url.netloc
-        server_url = f"{scheme}://{host}{BASE_PATH}"
-    install_cmd = f'bash <(curl -fsSL "{server_url}/api/agent/setup/{token}")'
+@app.get(f"{BASE_PATH}/api/cluster/info", dependencies=[Depends(_require_cluster_secret)])
+async def cluster_info() -> JSONResponse:
+    """Return basic information about this node. Used for ping/health checks."""
     return JSONResponse({
         "status": "ok",
-        "id": agent_id,
-        "install_cmd": install_cmd,
-        "message": "客户端已创建，请复制安装命令在目标服务器上执行",
+        "node_role": _NODE_ROLE,
+        "version": "1.1.1",
     })
 
 
-@app.delete(f"{BASE_PATH}/api/agents/{{agent_id}}", dependencies=[Depends(require_auth)])
-async def delete_agent(agent_id: int) -> JSONResponse:
-    await database.delete_agent(agent_id)
+@app.post(f"{BASE_PATH}/api/cluster/verify_admin", dependencies=[Depends(_require_cluster_secret)])
+async def cluster_verify_admin(req: ClusterVerifyAdminRequest) -> JSONResponse:
+    """Verify admin credentials for federated login. Returns {valid: true/false}."""
+    stored_hash: str = _runtime.get("admin_password_hash", "")
+    username: str = _runtime.get("admin_username", "admin")
+    valid = (req.username == username and _pwd_ctx.verify(req.password, stored_hash))
+    return JSONResponse({"valid": valid})
+
+
+@app.post(f"{BASE_PATH}/api/cluster/sync", dependencies=[Depends(_require_cluster_secret)])
+async def cluster_sync(req: ClusterSyncRequest) -> JSONResponse:
+    """Receive a products + change_log sync payload from a peer node."""
+    await database.bulk_upsert_products(req.products)
+    await database.bulk_insert_changes(req.changes)
+    return JSONResponse({
+        "status": "ok",
+        "products_received": len(req.products),
+        "changes_received": len(req.changes),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Admin — cluster node management routes
+# ---------------------------------------------------------------------------
+
+@app.get(f"{BASE_PATH}/api/nodes", dependencies=[Depends(require_auth)])
+async def list_nodes() -> JSONResponse:
+    nodes = await database.get_cluster_nodes()
+    return JSONResponse(nodes)
+
+
+@app.post(f"{BASE_PATH}/api/nodes", dependencies=[Depends(require_auth)])
+async def add_node(req: NodeCreate) -> JSONResponse:
+    url = req.url.rstrip("/")
+    if not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="URL 必须以 http:// 或 https:// 开头")
+
+    # Verify connectivity using the cluster_secret
+    initial_status = "unknown"
+    version = None
+    if _CLUSTER_SECRET:
+        try:
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                r = await client.get(
+                    url + "/api/cluster/info",
+                    headers={"Authorization": f"Bearer {_CLUSTER_SECRET}"},
+                )
+                if r.status_code == 200:
+                    info_body = r.json()
+                    initial_status = "online"
+                    version = info_body.get("version")
+                else:
+                    initial_status = "error"
+        except Exception:
+            initial_status = "unreachable"
+
+    node_id = await database.add_cluster_node(req.label, url, req.role)
+    if initial_status != "unknown":
+        await database.update_cluster_node_status(node_id, initial_status, version)
+
+    return JSONResponse({
+        "status": "ok",
+        "id": node_id,
+        "connectivity": initial_status,
+        "message": "节点已添加" + ("" if initial_status == "online" else "（连通性检测失败，请确认集群密钥和地址是否正确）"),
+    })
+
+
+@app.delete(f"{BASE_PATH}/api/nodes/{{node_id}}", dependencies=[Depends(require_auth)])
+async def remove_node(node_id: int) -> JSONResponse:
+    await database.delete_cluster_node(node_id)
     return JSONResponse({"status": "ok"})
 
 
-@app.put(f"{BASE_PATH}/api/agents/{{agent_id}}/task", dependencies=[Depends(require_auth)])
-async def assign_agent_task(agent_id: int, req: AgentTaskAssign) -> JSONResponse:
-    agent = await database.get_agent_by_id(agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="客户端不存在")
+@app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/ping", dependencies=[Depends(require_auth)])
+async def ping_node(node_id: int) -> JSONResponse:
+    node = await database.get_cluster_node_by_id(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="节点不存在")
 
-    # Resolve login token: prefer explicitly chosen site account, then active account
-    if req.site_account_id is not None:
-        login_token = await database.get_site_account_token_by_id(req.site_account_id) or ""
-    else:
-        cfg = await database.get_config()
-        login_token = cfg.get("login_token") or cfg.get("login_cookie") or ""
+    if not _CLUSTER_SECRET:
+        return JSONResponse({"status": "error", "message": "本节点未配置集群密钥"})
 
-    # Parse custom PID list (newline or comma-separated integers)
-    custom_pids: Optional[list[int]] = None
-    if req.pid_list and req.pid_list.strip():
-        parsed: list[int] = []
-        for part in req.pid_list.replace(",", "\n").splitlines():
-            part = part.strip()
-            if part:
-                try:
-                    parsed.append(int(part))
-                except ValueError:
-                    raise HTTPException(status_code=422, detail=f"无效的 PID 值: {part!r}")
-        if parsed:
-            custom_pids = sorted(set(parsed))
-
-    task: dict[str, Any] = {
-        "type": "scan",
-        "start_pid": req.start_pid,
-        "end_pid": req.end_pid,
-        "interval_ms": max(500, req.interval_ms),
-        "loop_enabled": req.loop_enabled,
-        "login_token": login_token,
-    }
-    if req.site_account_id is not None:
-        task["site_account_id"] = req.site_account_id
-    if custom_pids is not None:
-        task["custom_pids"] = custom_pids
-
-    await database.update_agent_task(agent_id, task)
-    return JSONResponse({"status": "ok", "message": "扫描任务已下发"})
+    try:
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+            r = await client.get(
+                node["url"].rstrip("/") + "/api/cluster/info",
+                headers={"Authorization": f"Bearer {_CLUSTER_SECRET}"},
+            )
+            if r.status_code == 200:
+                info_body = r.json()
+                await database.update_cluster_node_status(
+                    node_id, "online", info_body.get("version")
+                )
+                return JSONResponse({"status": "ok", "info": info_body})
+            else:
+                await database.update_cluster_node_status(node_id, "error")
+                return JSONResponse({"status": "error", "http_status": r.status_code})
+    except Exception as e:
+        await database.update_cluster_node_status(node_id, "unreachable")
+        return JSONResponse({"status": "unreachable", "message": str(e)})
 
 
-@app.put(f"{BASE_PATH}/api/agents/{{agent_id}}/notify", dependencies=[Depends(require_auth)])
-async def update_agent_notify(agent_id: int, req: AgentNotifyUpdate) -> JSONResponse:
-    """Set per-agent notification channels. Pass an empty dict to clear."""
-    agent = await database.get_agent_by_id(agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="客户端不存在")
-    await database.update_agent_notify(agent_id, req.notify_channels)
-    return JSONResponse({"status": "ok", "message": "客户端通知配置已保存"})
+@app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/proxy", dependencies=[Depends(require_auth)])
+async def proxy_to_node(node_id: int, req: ClusterProxyRequest) -> JSONResponse:
+    """Forward any API request to a registered cluster node."""
+    node = await database.get_cluster_node_by_id(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="节点不存在")
 
+    if not _CLUSTER_SECRET:
+        raise HTTPException(status_code=503, detail="本节点未配置集群密钥，无法代理请求")
 
-@app.delete(f"{BASE_PATH}/api/agents/{{agent_id}}/task", dependencies=[Depends(require_auth)])
-async def clear_agent_task(agent_id: int) -> JSONResponse:
-    agent = await database.get_agent_by_id(agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="客户端不存在")
-    await database.update_agent_task(agent_id, {"type": "idle"})
-    return JSONResponse({"status": "ok", "message": "任务已清除"})
+    target_url = node["url"].rstrip("/") + req.path
+    method = req.method.upper()
 
-
-@app.post(f"{BASE_PATH}/api/agents/{{agent_id}}/upgrade", dependencies=[Depends(require_auth)])
-async def push_agent_upgrade(agent_id: int) -> JSONResponse:
-    agent = await database.get_agent_by_id(agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="客户端不存在")
-    await database.update_agent_task(agent_id, {"type": "upgrade"})
-    return JSONResponse({"status": "ok", "message": "升级命令已下发，客户端将在下次心跳时升级"})
-
-
-@app.get(f"{BASE_PATH}/api/agents/{{agent_id}}/reports", dependencies=[Depends(require_auth)])
-async def get_agent_reports(agent_id: int, limit: int = 50) -> JSONResponse:
-    limit = min(max(limit, 1), 200)
-    reports = await database.get_agent_reports(agent_id, limit)
-    return JSONResponse(reports)
-
-
-# ---------------------------------------------------------------------------
-# Public — agent setup script & agent script download
-# ---------------------------------------------------------------------------
-
-_AGENT_SCRIPT_PATH = Path(__file__).parent / "agent.py"
-
-
-@app.get(f"{BASE_PATH}/api/agent/setup/{{token}}", include_in_schema=False)
-async def agent_setup_script(token: str, request: Request) -> PlainTextResponse:
-    """Return a bash install script for the agent with the given token embedded."""
-    agent = await database.get_agent_by_token(token)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Invalid token")
-    scheme = request.url.scheme
-    host = request.headers.get("host") or request.url.netloc
-    server_url = f"{scheme}://{host}{BASE_PATH}"
-    script = _build_agent_setup_script(server_url, token)
-    return PlainTextResponse(script, media_type="text/x-shellscript")
-
-
-@app.get(f"{BASE_PATH}/api/agent/script", include_in_schema=False)
-async def get_agent_script(
-    creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
-) -> PlainTextResponse:
-    """Return the agent.py script — requires valid agent token."""
-    if creds is None:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    agent = await database.get_agent_by_token(creds.credentials)
-    if not agent:
-        raise HTTPException(status_code=401, detail="Invalid agent token")
-    if not _AGENT_SCRIPT_PATH.exists():
-        raise HTTPException(status_code=404, detail="agent.py not found on server")
-    return PlainTextResponse(_AGENT_SCRIPT_PATH.read_text(encoding="utf-8"), media_type="text/x-python")
-
-
-def _build_agent_setup_script(server_url: str, token: str) -> str:
-    return f"""#!/usr/bin/env bash
-# HDY Agent — One-Click Installer
-# Generated by HDY Monitor
-set -euo pipefail
-
-RED='\\033[0;31m'; GREEN='\\033[0;32m'; CYAN='\\033[0;36m'; NC='\\033[0m'
-info()    {{ echo -e "${{CYAN}}[INFO]${{NC}}  $*"; }}
-success() {{ echo -e "${{GREEN}}[OK]${{NC}}    $*"; }}
-die()     {{ echo -e "${{RED}}[ERROR]${{NC}} $*"; exit 1; }}
-
-SERVER_URL="{server_url}"
-AGENT_TOKEN="{token}"
-INSTALL_DIR="/opt/hdy-agent"
-SERVICE_NAME="hdy-agent"
-SERVICE_FILE="/etc/systemd/system/${{SERVICE_NAME}}.service"
-
-[[ $EUID -ne 0 ]] && die "请使用 sudo 或 root 运行此脚本"
-
-info "安装系统依赖..."
-apt-get update -qq 2>/dev/null || true
-apt-get install -y -qq python3 python3-pip python3-venv curl 2>/dev/null || true
-
-info "创建安装目录 ${{INSTALL_DIR}}..."
-mkdir -p "${{INSTALL_DIR}}"
-
-info "下载 agent 脚本..."
-curl -fsSL "${{SERVER_URL}}/api/agent/script" \\
-  -H "Authorization: Bearer ${{AGENT_TOKEN}}" \\
-  -o "${{INSTALL_DIR}}/agent.py"
-
-info "写入配置文件..."
-cat > "${{INSTALL_DIR}}/config.json" <<JSON
-{{
-  "server_url": "${{SERVER_URL}}",
-  "token": "${{AGENT_TOKEN}}"
-}}
-JSON
-chmod 600 "${{INSTALL_DIR}}/config.json"
-
-info "创建 Python 虚拟环境..."
-python3 -m venv "${{INSTALL_DIR}}/venv"
-"${{INSTALL_DIR}}/venv/bin/pip" install -q --upgrade pip
-"${{INSTALL_DIR}}/venv/bin/pip" install -q httpx
-
-info "创建 systemd 服务..."
-cat > "${{SERVICE_FILE}}" <<SVC
-[Unit]
-Description=HDY Agent
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=${{INSTALL_DIR}}
-ExecStart=${{INSTALL_DIR}}/venv/bin/python ${{INSTALL_DIR}}/agent.py
-Restart=always
-RestartSec=10
-Environment=HDY_AGENT_CONFIG=${{INSTALL_DIR}}/config.json
-
-[Install]
-WantedBy=multi-user.target
-SVC
-
-systemctl daemon-reload
-systemctl enable "${{SERVICE_NAME}}" --quiet
-systemctl restart "${{SERVICE_NAME}}"
-success "HDY Agent 已安装并启动！"
-echo ""
-echo "  管理命令:"
-echo "    systemctl status ${{SERVICE_NAME}}   # 查看状态"
-echo "    journalctl -u ${{SERVICE_NAME}} -f   # 查看日志"
-echo "    systemctl stop ${{SERVICE_NAME}}     # 停止"
-echo ""
-"""
-
-
-# ---------------------------------------------------------------------------
-# Client — agent heartbeat & report (authenticated by agent token)
-# ---------------------------------------------------------------------------
-
-@app.post(f"{BASE_PATH}/api/agent/heartbeat")
-async def agent_heartbeat(
-    req: AgentHeartbeatRequest,
-    request: Request,
-    agent: dict[str, Any] = Depends(_require_agent),
-) -> JSONResponse:
-    """Agent calls this periodically; server returns the current command/task."""
-    ip_addr = request.headers.get("x-forwarded-for", request.client.host if request.client else None)
-    if ip_addr:
-        ip_addr = ip_addr.split(",")[0].strip()
-    await database.update_agent_heartbeat(
-        agent["id"],
-        req.status or "online",
-        req.version,
-        ip_addr,
-    )
-    task = agent.get("task") or {"type": "idle"}
-    task_type = task.get("type", "idle")
-
-    # If it's a scan task, refresh the login token before returning.
-    # Use the specific site account if one was assigned; otherwise fall back to the active account.
-    if task_type == "scan":
-        task = dict(task)
-        site_account_id: Optional[int] = task.get("site_account_id")
-        if site_account_id is not None:
-            refreshed = await database.get_site_account_token_by_id(site_account_id)
-            task["login_token"] = refreshed or ""
-        else:
-            cfg = await database.get_config()
-            task["login_token"] = cfg.get("login_token") or cfg.get("login_cookie") or ""
-
-    return JSONResponse({"command": task_type, "task": task})
-
-
-@app.post(f"{BASE_PATH}/api/agent/report")
-async def agent_report(
-    req: AgentReportRequest,
-    agent: dict[str, Any] = Depends(_require_agent),
-) -> JSONResponse:
-    """Agent reports a detected product change."""
-    await database.add_agent_report(
-        agent["id"],
-        req.pid,
-        req.name,
-        req.price,
-        req.stock_status,
-        req.changed_fields,
-    )
-
-    # Send notification — prefer agent-specific channels, fall back to global
-    if req.changed_fields:
-        agent_channels: dict[str, Any] = agent.get("notify_channels") or {}
-        has_agent_channels = any(
-            isinstance(v, dict) and v.get("enabled") for v in agent_channels.values()
-        )
-        if has_agent_channels:
-            notify_channels: dict[str, Any] = agent_channels
-        else:
-            cfg = await database.get_config()
-            notify_channels = cfg.get("notify_channels", {})
-        agent_name = agent.get("name") or "未知客户端"
-        stock_map = {"in_stock": "有货", "out_of_stock": "无货", "unknown": "未知"}
-        stock_zh = stock_map.get(req.stock_status or "", req.stock_status or "未知")
-        fields_zh = "、".join(req.changed_fields)
-        title = f"[客户端] PID {req.pid} 变化"
-        body = (
-            f"来源: {agent_name}\n"
-            f"PID: {req.pid}\n"
-            f"名称: {req.name or '—'}\n"
-            f"价格: {req.price or '—'}\n"
-            f"库存: {stock_zh}\n"
-            f"变化字段: {fields_zh}"
-        )
-        for ch_key, ch_cfg in notify_channels.items():
-            if not (isinstance(ch_cfg, dict) and ch_cfg.get("enabled")):
-                continue
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            kwargs: dict[str, Any] = {
+                "headers": {
+                    "Authorization": f"Bearer {_CLUSTER_SECRET}",
+                    "Content-Type": "application/json",
+                }
+            }
+            if req.body is not None and method not in ("GET", "HEAD", "DELETE"):
+                kwargs["json"] = req.body
+            r = await client.request(method, target_url, **kwargs)
             try:
-                await notifier.send_channel(ch_key, ch_cfg, title=title, body=body)
+                content = r.json()
             except Exception:
-                pass
+                content = {"raw": r.text}
+            return JSONResponse(content=content, status_code=r.status_code)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"代理请求失败: {e}")
 
-    return JSONResponse({"status": "ok"})
 
+@app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/push_sync", dependencies=[Depends(require_auth)])
+async def push_sync_to_node(node_id: int) -> JSONResponse:
+    """Push local products and change_log data to a registered node."""
+    node = await database.get_cluster_node_by_id(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="节点不存在")
+
+    if not _CLUSTER_SECRET:
+        raise HTTPException(status_code=503, detail="本节点未配置集群密钥")
+
+    products = await database.export_products_for_sync()
+    changes = await database.export_changes_for_sync()
+
+    try:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            r = await client.post(
+                node["url"].rstrip("/") + "/api/cluster/sync",
+                json={"products": products, "changes": changes},
+                headers={
+                    "Authorization": f"Bearer {_CLUSTER_SECRET}",
+                    "Content-Type": "application/json",
+                },
+            )
+            if r.status_code == 200:
+                result = r.json()
+                return JSONResponse({"status": "ok", **result})
+            else:
+                return JSONResponse(
+                    {"status": "error", "message": f"目标节点返回 HTTP {r.status_code}"},
+                    status_code=502,
+                )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"同步失败: {e}")
 
 
 _ASSETS_DIR = _STATIC_DIR / "assets"

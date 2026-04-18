@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 """
-HDY Agent — Remote scanning client for HDY Monitor.
+DEPRECATED — HDY Agent remote client.
+
+This module is no longer used by the main HDY Monitor application. The
+agent/client subsystem has been replaced by the server-to-server cluster
+feature (cluster_nodes). Existing deployments that still run agent.py will
+continue to work until they are migrated, but the agent API endpoints
+(/api/agents, /api/agent/heartbeat, /api/agent/report) have been removed
+from the server.
+
+See the cluster configuration in the admin panel (集群 tab) for the
+replacement functionality.
+"""
+
 
 Polls the central server for tasks, executes PID scans against szhdy.com,
 reports detected changes back to the server.
