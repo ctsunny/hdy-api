@@ -85,6 +85,8 @@ class ConfigUpdate(BaseModel):
     notify_price_max: Optional[float] = None
     notify_monthly_price_min: Optional[float] = None
     notify_monthly_price_max: Optional[float] = None
+    site_title: Optional[str] = None
+    scan_reverse: Optional[bool] = None
 
 
 class CrawlerStatus(BaseModel):

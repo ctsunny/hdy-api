@@ -294,6 +294,7 @@ async def get_config() -> JSONResponse:
     cfg_out = {k: v for k, v in cfg.items() if k not in ("login_cookie", "login_token")}
     cfg_out["has_cookie"] = bool(cfg.get("login_cookie"))
     cfg_out["has_token"] = bool(cfg.get("login_token"))
+    cfg_out["site_title"] = cfg.get("site_title") or ""
     return JSONResponse(cfg_out)
 
 
@@ -323,6 +324,10 @@ async def update_config(body: ConfigUpdate) -> JSONResponse:
         update["notify_monthly_price_min"] = body.notify_monthly_price_min
     if "notify_monthly_price_max" in provided:
         update["notify_monthly_price_max"] = body.notify_monthly_price_max
+    if "site_title" in provided:
+        update["site_title"] = body.site_title or ""
+    if "scan_reverse" in provided and body.scan_reverse is not None:
+        update["scan_reverse"] = body.scan_reverse
     await database.update_config(**update)
     return JSONResponse({"status": "ok"})
 

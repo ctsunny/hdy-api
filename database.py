@@ -60,7 +60,9 @@ CREATE TABLE IF NOT EXISTS config (
     notify_price_min REAL DEFAULT NULL,
     notify_price_max REAL DEFAULT NULL,
     notify_monthly_price_min REAL DEFAULT NULL,
-    notify_monthly_price_max REAL DEFAULT NULL
+    notify_monthly_price_max REAL DEFAULT NULL,
+    site_title               TEXT DEFAULT NULL,
+    scan_reverse             INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS notify_log (
@@ -144,6 +146,8 @@ async def init_db() -> None:
             ("notify_price_max", "REAL DEFAULT NULL"),
             ("notify_monthly_price_min", "REAL DEFAULT NULL"),
             ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+            ("site_title", "TEXT DEFAULT NULL"),
+            ("scan_reverse", "INTEGER DEFAULT 0"),
         ])
         # Migrate products table
         await _add_missing_cols("products", [
@@ -183,6 +187,7 @@ async def get_config() -> dict[str, Any]:
             d = dict(row)
             d["notify_channels"] = json.loads(d.get("notify_channels") or "{}")
             d["loop_enabled"] = bool(d.get("loop_enabled", 0))
+            d["scan_reverse"] = bool(d.get("scan_reverse", 0))
             return d
 
 
@@ -198,6 +203,9 @@ async def update_config(**kwargs: Any) -> None:
         values[idx] = json.dumps(kwargs["notify_channels"])
     if "loop_enabled" in kwargs:
         idx = list(kwargs.keys()).index("loop_enabled")
+        values[idx] = int(values[idx])
+    if "scan_reverse" in kwargs:
+        idx = list(kwargs.keys()).index("scan_reverse")
         values[idx] = int(values[idx])
 
     async with aiosqlite.connect(DB_PATH) as db:
