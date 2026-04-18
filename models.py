@@ -85,6 +85,8 @@ class ConfigUpdate(BaseModel):
     notify_price_max: Optional[float] = None
     notify_monthly_price_min: Optional[float] = None
     notify_monthly_price_max: Optional[float] = None
+    site_title: Optional[str] = None
+    scan_reverse: Optional[bool] = None
 
 
 class CrawlerStatus(BaseModel):
@@ -170,39 +172,26 @@ class VisitorPasswordUpdate(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Agent client models
+# Cluster / node models
 # ---------------------------------------------------------------------------
 
-class AgentCreate(BaseModel):
-    name: str
-    server_url: Optional[str] = None
+class NodeCreate(BaseModel):
+    label: Optional[str] = None
+    url: str
+    role: str = "slave"
 
 
-class AgentTaskAssign(BaseModel):
-    start_pid: int = 1150
-    end_pid: int = 1200
-    interval_ms: int = 1500
-    loop_enabled: bool = False
-    # Optional custom PID list (newline or comma-separated integers).
-    # When provided, the agent scans only these PIDs instead of the start–end range.
-    pid_list: Optional[str] = None
-    # Optional site account ID to use for authentication.
-    # When provided, the token of this account is embedded in the task.
-    site_account_id: Optional[int] = None
+class ClusterProxyRequest(BaseModel):
+    method: str = "GET"
+    path: str
+    body: Optional[Any] = None
 
 
-class AgentNotifyUpdate(BaseModel):
-    notify_channels: dict[str, Any] = Field(default_factory=dict)
+class ClusterVerifyAdminRequest(BaseModel):
+    username: str
+    password: str
 
 
-class AgentHeartbeatRequest(BaseModel):
-    version: Optional[str] = None
-    status: Optional[str] = None
-
-
-class AgentReportRequest(BaseModel):
-    pid: int
-    name: Optional[str] = None
-    price: Optional[str] = None
-    stock_status: Optional[str] = None
-    changed_fields: list[str] = Field(default_factory=list)
+class ClusterSyncRequest(BaseModel):
+    products: list[dict] = Field(default_factory=list)
+    changes: list[dict] = Field(default_factory=list)

@@ -166,6 +166,9 @@ set -o pipefail
 # Random JWT secret key (32-char hex)
 SECRET_KEY=$(openssl rand -hex 32)
 
+# Random cluster secret key (16-char hex)
+CLUSTER_SECRET=$(openssl rand -hex 16)
+
 # Hash password with bcrypt via Python
 PASS_HASH=$("${VENV_PY}" -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('${ADMIN_PASS}'))")
 
@@ -180,6 +183,8 @@ cat > "${CONFIG_FILE}" <<EOF
   "admin_username": "${ADMIN_USER}",
   "admin_password_hash": "${PASS_HASH}",
   "secret_key": "${SECRET_KEY}",
+  "cluster_secret": "${CLUSTER_SECRET}",
+  "node_role": "master",
   "port": ${PORT},
   "base_path": "${BASE_PATH}"
 }
