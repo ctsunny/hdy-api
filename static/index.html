@@ -305,6 +305,17 @@
   <div class="card">
     <h2>本节点信息</h2>
     <div id="cluster-local-info" style="font-size:13px;color:var(--muted);">加载中…</div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="genShareCode()">📋 生成分享码</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px;">生成后可在其他节点粘贴，免手动输入地址</span>
+    </div>
+    <div id="share-code-box" style="display:none;margin-top:10px;">
+      <label>分享码（复制后在目标节点的「粘贴分享码」处粘贴）</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input type="text" id="share-code-output" readonly style="flex:1;font-family:monospace;font-size:11px;background:#0a0d16;width:auto;">
+        <button class="btn btn-sm" style="background:#333;color:var(--text);flex-shrink:0;" onclick="copyShareCode()">📋 复制</button>
+      </div>
+    </div>
   </div>
 
   <!-- Registered nodes -->
@@ -322,21 +333,63 @@
   <!-- Add node -->
   <div class="card">
     <h2>➕ 添加节点</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">
       输入另一台 HDY Monitor 的访问地址（需在 config.json 中配置相同的 <code>cluster_secret</code>）。
     </p>
-    <div class="form-row">
-      <div class="form-group"><label>备注名</label><input type="text" id="node-label" placeholder="如：节点2" style="width:140px;"></div>
-      <div class="form-group"><label>服务器地址 (含路径前缀)</label><input type="text" id="node-url" placeholder="http://1.2.3.4:8080/abc" style="width:300px;"></div>
-      <div class="form-group"><label>角色</label>
-        <select id="node-role" style="width:100px;">
-          <option value="slave">从节点</option>
-          <option value="master">主节点</option>
-        </select>
+
+    <!-- Method 1: Smart URL one-click add -->
+    <div class="form-row" style="margin-bottom:4px;">
+      <div class="form-group" style="flex:1;min-width:200px;">
+        <label>服务器地址 (含路径前缀)</label>
+        <input type="text" id="node-url" placeholder="http://1.2.3.4:8080/abc" style="width:100%;">
+      </div>
+      <div class="form-group">
+        <button class="btn btn-primary" onclick="addNode()">⚡ 一键添加</button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="addNode()">添加并验证</button>
-    <span id="add-node-status" style="margin-left:12px;font-size:12px;"></span>
+    <div style="min-height:18px;margin-bottom:14px;">
+      <span id="add-node-status" style="font-size:12px;"></span>
+    </div>
+
+    <!-- Method 2: Share code -->
+    <div class="form-row" style="margin-bottom:4px;">
+      <div class="form-group" style="flex:1;min-width:200px;">
+        <label>粘贴分享码（从其他节点的「本节点信息」生成）</label>
+        <input type="text" id="node-share-code" placeholder="eyJ1cmwiOi…" style="width:100%;">
+      </div>
+      <div class="form-group">
+        <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="applyShareCode()">📥 解码并添加</button>
+      </div>
+    </div>
+
+    <!-- Method 3: Bulk JSON import (collapsible) -->
+    <details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">📦 批量导入（JSON 数组）</summary>
+      <div style="margin-top:8px;">
+        <textarea id="bulk-nodes-json" rows="4" style="width:100%;background:#0a0d16;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:monospace;font-size:12px;resize:vertical;">[
+  {"label":"节点2","url":"http://1.2.3.4:8080","role":"slave"},
+  {"label":"节点3","url":"http://5.6.7.8:8080","role":"slave"}
+]</textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+          <button class="btn btn-sm btn-primary" onclick="bulkAddNodes()">📦 批量添加</button>
+          <span id="bulk-add-status" style="font-size:12px;"></span>
+        </div>
+      </div>
+    </details>
+
+    <!-- Advanced options: manual label / role override (collapsible) -->
+    <details style="margin-top:6px;">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">⚙️ 高级选项（手动指定备注名和角色）</summary>
+      <div class="form-row" style="margin-top:8px;">
+        <div class="form-group"><label>备注名（留空则自动取 hostname:port）</label><input type="text" id="node-label" placeholder="如：节点2" style="width:180px;"></div>
+        <div class="form-group"><label>角色</label>
+          <select id="node-role" style="width:100px;">
+            <option value="slave">从节点</option>
+            <option value="master">主节点</option>
+          </select>
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- Data sync -->
@@ -380,6 +433,7 @@ let _statusInterval = null;
 let _changesPage = 1;
 let _proxyNodeId = null;   // null = local node; number = remote node id
 let _nodes = [];           // registered cluster nodes
+let _localConfig = null;   // cached /api/config response for this node
 
 // ── HTML escape helper (prevent XSS) ──────────────────────────────────────
 function esc(s) {
@@ -1019,6 +1073,7 @@ async function loadCluster() {
     const r = await api('GET', '/api/config');
     if (r.ok) {
       const c = await r.json();
+      _localConfig = c;
       document.getElementById('cluster-local-info').innerHTML =
         `<p>节点角色: <strong style="color:var(--accent2)">${esc(c.node_role || 'master')}</strong>
          &nbsp;|&nbsp; 集群密钥: <strong style="color:var(--success)">${c.has_cluster_secret ? '✅ 已配置' : '⚠️ 未配置'}</strong></p>`;
@@ -1150,13 +1205,22 @@ async function removeNode(nodeId) {
 }
 
 async function addNode() {
-  const label = document.getElementById('node-label').value.trim();
   const url = document.getElementById('node-url').value.trim();
-  const role = document.getElementById('node-role').value;
   const statusEl = document.getElementById('add-node-status');
   if (!url) { toast('请输入服务器地址', 'error'); return; }
+
+  // Auto-generate label from URL when not manually specified
+  let label = document.getElementById('node-label').value.trim();
+  if (!label) {
+    try {
+      const u = new URL(url);
+      label = u.hostname + (u.port ? ':' + u.port : '');
+    } catch(e) { label = url; }
+  }
+
+  const role = document.getElementById('node-role').value;
   statusEl.textContent = '验证中…'; statusEl.style.color = 'var(--muted)';
-  const body = { label: label || null, url, role };
+  const body = { label, url, role };
   const r = await fetch(BASE + '/api/nodes', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
@@ -1166,13 +1230,90 @@ async function addNode() {
   if (r.ok) {
     statusEl.textContent = d.message || '已添加';
     statusEl.style.color = d.connectivity === 'online' ? 'var(--success)' : 'var(--warn)';
-    document.getElementById('node-label').value = '';
     document.getElementById('node-url').value = '';
+    document.getElementById('node-label').value = '';
     loadCluster();
   } else {
     statusEl.textContent = d.detail || d.message || '添加失败';
     statusEl.style.color = 'var(--danger)';
   }
+}
+
+// ── Share code helpers ────────────────────────────────────────────────────
+
+function genShareCode() {
+  const urlBase = window.location.origin + BASE;
+  let label;
+  try {
+    const u = new URL(urlBase);
+    label = u.hostname + (u.port ? ':' + u.port : '');
+  } catch(e) { label = urlBase; }
+  const role = _localConfig ? (_localConfig.node_role || 'slave') : 'slave';
+  const payload = JSON.stringify({ url: urlBase, label, role });
+  const code = btoa(encodeURIComponent(payload).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode('0x' + p1)));
+  document.getElementById('share-code-output').value = code;
+  document.getElementById('share-code-box').style.display = 'block';
+}
+
+function copyShareCode() {
+  const input = document.getElementById('share-code-output');
+  navigator.clipboard.writeText(input.value)
+    .then(() => toast('分享码已复制', 'success'))
+    .catch(() => { input.select(); document.execCommand('copy'); toast('分享码已复制', 'success'); });
+}
+
+function applyShareCode() {
+  const code = document.getElementById('node-share-code').value.trim();
+  if (!code) { toast('请粘贴分享码', 'error'); return; }
+  try {
+    const obj = JSON.parse(decodeURIComponent(atob(code).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+    if (!obj.url) throw new Error('missing url');
+    document.getElementById('node-url').value = obj.url;
+    if (obj.label) document.getElementById('node-label').value = obj.label;
+    if (obj.role) document.getElementById('node-role').value = obj.role;
+    document.getElementById('node-share-code').value = '';
+    toast('分享码已解析，点击「一键添加」确认', 'success');
+  } catch(e) {
+    toast('分享码格式无效', 'error');
+  }
+}
+
+// ── Bulk JSON import ──────────────────────────────────────────────────────
+
+async function bulkAddNodes() {
+  const jsonText = document.getElementById('bulk-nodes-json').value.trim();
+  const statusEl = document.getElementById('bulk-add-status');
+  let nodes;
+  try {
+    nodes = JSON.parse(jsonText);
+    if (!Array.isArray(nodes) || nodes.length === 0) throw new Error();
+  } catch(e) {
+    toast('JSON 格式错误，需为非空数组', 'error');
+    return;
+  }
+  statusEl.textContent = `正在添加 ${nodes.length} 个节点…`;
+  statusEl.style.color = 'var(--muted)';
+  let ok = 0, fail = 0;
+  for (const n of nodes) {
+    if (!n.url) { fail++; continue; }
+    if (!n.label) {
+      try {
+        const u = new URL(n.url);
+        n.label = u.hostname + (u.port ? ':' + u.port : '');
+      } catch(e) { n.label = n.url; }
+    }
+    try {
+      const r = await fetch(BASE + '/api/nodes', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: n.label, url: n.url, role: n.role || 'slave' }),
+      });
+      r.ok ? ok++ : fail++;
+    } catch(e) { fail++; }
+  }
+  statusEl.textContent = `完成：成功 ${ok}，失败 ${fail}`;
+  statusEl.style.color = fail > 0 ? 'var(--warn)' : 'var(--success)';
+  loadCluster();
 }
 
 async function pushSyncToNode(nodeId, btn) {
