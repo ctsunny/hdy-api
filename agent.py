@@ -2,31 +2,15 @@
 """
 DEPRECATED — HDY Agent remote client.
 
-This module is no longer used by the main HDY Monitor application. The
-agent/client subsystem has been replaced by the server-to-server cluster
-feature (cluster_nodes). Existing deployments that still run agent.py will
-continue to work until they are migrated, but the agent API endpoints
-(/api/agents, /api/agent/heartbeat, /api/agent/report) have been removed
-from the server.
+This module has been superseded by the server-to-server cluster feature
+(cluster_nodes). The agent API endpoints (/api/agents, /api/agent/heartbeat,
+/api/agent/report) have been removed from the server in v1.2.0. Existing
+deployments that still run agent.py will immediately fail to connect to an
+updated server.
 
-See the cluster configuration in the admin panel (集群 tab) for the
-replacement functionality.
+See the 集群 tab in the admin panel for the replacement cluster functionality.
 """
 
-
-Polls the central server for tasks, executes PID scans against szhdy.com,
-reports detected changes back to the server.
-
-Usage:
-    python agent.py
-    HDY_AGENT_CONFIG=/path/to/config.json python agent.py
-
-config.json format:
-    {
-        "server_url": "http://SERVER_IP:PORT/BASE_PATH",
-        "token": "AGENT_TOKEN"
-    }
-"""
 from __future__ import annotations
 
 import asyncio

@@ -803,9 +803,9 @@ async def ping_node(node_id: int) -> JSONResponse:
             else:
                 await database.update_cluster_node_status(node_id, "error")
                 return JSONResponse({"status": "error", "http_status": r.status_code})
-    except Exception as e:
+    except Exception:
         await database.update_cluster_node_status(node_id, "unreachable")
-        return JSONResponse({"status": "unreachable", "message": str(e)})
+        return JSONResponse({"status": "unreachable", "message": "节点连接失败"})
 
 
 @app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/proxy", dependencies=[Depends(require_auth)])
@@ -821,8 +821,12 @@ async def proxy_to_node(node_id: int, req: ClusterProxyRequest) -> JSONResponse:
     target_url = node["url"].rstrip("/") + req.path
     method = req.method.upper()
 
+    # Validate the path to prevent SSRF: must start with /api/ and contain no scheme
+    if not req.path.startswith("/api/") or "://" in req.path:
+        raise HTTPException(status_code=400, detail="无效的代理路径：必须以 /api/ 开头")
+
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
             kwargs: dict[str, Any] = {
                 "headers": {
                     "Authorization": f"Bearer {_CLUSTER_SECRET}",
@@ -837,8 +841,8 @@ async def proxy_to_node(node_id: int, req: ClusterProxyRequest) -> JSONResponse:
             except Exception:
                 content = {"raw": r.text}
             return JSONResponse(content=content, status_code=r.status_code)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"代理请求失败: {e}")
+    except Exception:
+        raise HTTPException(status_code=502, detail="代理请求失败")
 
 
 @app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/push_sync", dependencies=[Depends(require_auth)])
@@ -872,8 +876,8 @@ async def push_sync_to_node(node_id: int) -> JSONResponse:
                     {"status": "error", "message": f"目标节点返回 HTTP {r.status_code}"},
                     status_code=502,
                 )
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"同步失败: {e}")
+    except Exception:
+        raise HTTPException(status_code=502, detail="同步失败")
 
 
 _ASSETS_DIR = _STATIC_DIR / "assets"

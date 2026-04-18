@@ -1112,7 +1112,7 @@ function switchNode(nodeId) {
   if (activeTab && activeBtn && activeTab.id !== 'tab-cluster') {
     showTab(activeTab.id, activeBtn);
   }
-  toast(nodeId === null ? '已切换到本节点' : '已切换到远程节点：代理模式', nodeId === null ? 'success' : '');
+  toast(nodeId === null ? '已切换到本节点' : '已切换到远程节点：代理模式', 'success');
 }
 
 async function pingNode(nodeId) {
