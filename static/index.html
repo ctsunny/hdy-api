@@ -100,6 +100,7 @@
 <div id="node-switcher" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 24px;align-items:center;gap:8px;overflow-x:auto;">
   <span style="font-size:11px;color:var(--muted);flex-shrink:0;">🌐 节点:</span>
   <div id="node-switcher-buttons" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  <span id="remote-node-banner" style="display:none;font-size:11px;color:#f59e0b;font-weight:600;margin-left:8px;">⚠️ 当前操作的是远程节点</span>
 </div>
 
 <nav>
@@ -305,9 +306,9 @@
   <div class="card">
     <h2>本节点信息</h2>
     <div id="cluster-local-info" style="font-size:13px;color:var(--muted);">加载中…</div>
-    <div style="margin-top:10px;">
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="genShareCode()">📋 生成分享码</button>
-      <span style="font-size:11px;color:var(--muted);margin-left:8px;">生成后可在其他节点粘贴，免手动输入地址</span>
+      <span style="font-size:11px;color:var(--muted);">生成后可在其他节点粘贴，免手动输入地址</span>
     </div>
     <div id="share-code-box" style="display:none;margin-top:10px;">
       <label>分享码（复制后在目标节点的「粘贴分享码」处粘贴）</label>
@@ -316,6 +317,29 @@
         <button class="btn btn-sm" style="background:#333;color:var(--text);flex-shrink:0;" onclick="copyShareCode()">📋 复制</button>
       </div>
     </div>
+    <!-- Cluster config -->
+    <details style="margin-top:14px;">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">⚙️ 修改集群配置（cluster_secret / node_role）</summary>
+      <div style="margin-top:10px;">
+        <div class="form-row">
+          <div class="form-group" style="flex:1;min-width:200px;">
+            <label>集群密钥（留空则清除）</label>
+            <input type="password" id="cfg-cluster-secret" placeholder="各节点需一致" style="width:100%;" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label>本节点角色</label>
+            <select id="cfg-node-role" style="width:110px;">
+              <option value="master">主节点</option>
+              <option value="slave">从节点</option>
+            </select>
+          </div>
+          <div class="form-group" style="align-self:flex-end;">
+            <button class="btn btn-sm btn-primary" onclick="saveClusterConfig()">💾 保存</button>
+          </div>
+        </div>
+        <span id="cluster-cfg-status" style="font-size:12px;"></span>
+      </div>
+    </details>
   </div>
 
   <!-- Registered nodes -->
@@ -344,6 +368,17 @@
         <input type="text" id="node-url" placeholder="http://1.2.3.4:8080/abc" style="width:100%;">
       </div>
       <div class="form-group">
+        <label>备注名（可选）</label>
+        <input type="text" id="node-label" placeholder="如：节点2" style="width:140px;">
+      </div>
+      <div class="form-group">
+        <label>角色</label>
+        <select id="node-role" style="width:100px;">
+          <option value="slave">从节点</option>
+          <option value="master">主节点</option>
+        </select>
+      </div>
+      <div class="form-group" style="align-self:flex-end;">
         <button class="btn btn-primary" onclick="addNode()">⚡ 一键添加</button>
       </div>
     </div>
@@ -351,15 +386,18 @@
       <span id="add-node-status" style="font-size:12px;"></span>
     </div>
 
-    <!-- Method 2: Share code -->
+    <!-- Method 2: Share code (one-step auto-add) -->
     <div class="form-row" style="margin-bottom:4px;">
       <div class="form-group" style="flex:1;min-width:200px;">
-        <label>粘贴分享码（从其他节点的「本节点信息」生成）</label>
+        <label>粘贴分享码（从其他节点的「本节点信息」生成，自动解码并添加）</label>
         <input type="text" id="node-share-code" placeholder="eyJ1cmwiOi…" style="width:100%;">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="align-self:flex-end;">
         <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="applyShareCode()">📥 解码并添加</button>
       </div>
+    </div>
+    <div style="min-height:18px;margin-bottom:6px;">
+      <span id="share-add-status" style="font-size:12px;"></span>
     </div>
 
     <!-- Method 3: Bulk JSON import (collapsible) -->
@@ -376,27 +414,16 @@
         </div>
       </div>
     </details>
-
-    <!-- Advanced options: manual label / role override (collapsible) -->
-    <details style="margin-top:6px;">
-      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">⚙️ 高级选项（手动指定备注名和角色）</summary>
-      <div class="form-row" style="margin-top:8px;">
-        <div class="form-group"><label>备注名（留空则自动取 hostname:port）</label><input type="text" id="node-label" placeholder="如：节点2" style="width:180px;"></div>
-        <div class="form-group"><label>角色</label>
-          <select id="node-role" style="width:100px;">
-            <option value="slave">从节点</option>
-            <option value="master">主节点</option>
-          </select>
-        </div>
-      </div>
-    </details>
   </div>
 
   <!-- Data sync -->
   <div class="card">
-    <h2>数据同步</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h2>数据同步</h2>
+      <button class="btn btn-sm btn-warn" id="push-all-btn" onclick="pushSyncAll(this)" style="display:none;">⬆️ 一键推送全部</button>
+    </div>
     <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
-      将本节点的产品数据和变化记录推送到目标节点（覆盖合并）。
+      将本节点的产品数据和变化记录推送到目标节点（覆盖合并）。推送前会显示确认提示。
     </p>
     <div id="sync-nodes-buttons" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
   </div>
@@ -494,8 +521,22 @@ function showTab(id, btn) {
   if (id === 'tab-changes') loadChanges();
   if (id === 'tab-config') loadConfig();
   if (id === 'tab-notify') loadNotifyConfig();
-  if (id === 'tab-cluster') loadCluster();
   if (id === 'tab-visitors') loadVisitors();
+  if (id === 'tab-cluster') {
+    loadCluster();
+    // Auto-refresh cluster status every 30 s while the tab is open
+    if (_clusterRefreshTimer) clearInterval(_clusterRefreshTimer);
+    _clusterRefreshTimer = setInterval(() => {
+      if (document.getElementById('tab-cluster').classList.contains('active')) {
+        pingAllNodes().catch(() => {});
+      } else {
+        clearInterval(_clusterRefreshTimer);
+        _clusterRefreshTimer = null;
+      }
+    }, 30000);
+  } else {
+    if (_clusterRefreshTimer) { clearInterval(_clusterRefreshTimer); _clusterRefreshTimer = null; }
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
@@ -1060,12 +1101,16 @@ async function uploadRestore(input) {
 
 // ── Cluster management ────────────────────────────────────────────────────
 
-function nodeStatusBadge(status) {
-  if (status === 'online') return '<span class="badge badge-green">在线</span>';
-  if (status === 'error') return '<span class="badge badge-red">错误</span>';
-  if (status === 'unreachable') return '<span class="badge badge-red">不可达</span>';
+function nodeStatusBadge(n) {
+  if (n.status === 'online') return '<span class="badge badge-green">在线</span>';
+  const msg = n.error_message ? esc(n.error_message) : '';
+  const tip = msg ? ` title="${msg}"` : '';
+  if (n.status === 'error') return `<span class="badge badge-red" style="cursor:default;"${tip}>错误${msg ? ' ℹ️' : ''}</span>`;
+  if (n.status === 'unreachable') return `<span class="badge badge-red" style="cursor:default;"${tip}>不可达${msg ? ' ℹ️' : ''}</span>`;
   return '<span class="badge badge-gray">未知</span>';
 }
+
+let _clusterRefreshTimer = null;
 
 async function loadCluster() {
   // Show local node info
@@ -1076,7 +1121,10 @@ async function loadCluster() {
       _localConfig = c;
       document.getElementById('cluster-local-info').innerHTML =
         `<p>节点角色: <strong style="color:var(--accent2)">${esc(c.node_role || 'master')}</strong>
-         &nbsp;|&nbsp; 集群密钥: <strong style="color:var(--success)">${c.has_cluster_secret ? '✅ 已配置' : '⚠️ 未配置'}</strong></p>`;
+         &nbsp;|&nbsp; 集群密钥: <strong style="color:${c.has_cluster_secret ? 'var(--success)' : 'var(--warn)'}">${c.has_cluster_secret ? '✅ 已配置' : '⚠️ 未配置'}</strong></p>`;
+      // Prefill cluster config form with current role
+      const roleEl = document.getElementById('cfg-node-role');
+      if (roleEl && c.node_role) roleEl.value = c.node_role;
     }
   } catch(e) {}
 
@@ -1100,13 +1148,15 @@ function renderNodes() {
     return;
   }
   el.innerHTML = `<table style="width:100%;">
-    <thead><tr><th>备注</th><th>地址</th><th>角色</th><th>状态</th><th>版本</th><th>最后在线</th><th>操作</th></tr></thead>
+    <thead><tr><th>节点</th><th>角色</th><th>状态</th><th>版本</th><th>最后在线</th><th>操作</th></tr></thead>
     <tbody>${_nodes.map(n => `
-      <tr>
-        <td style="font-weight:500;">${esc(n.label) || '—'}</td>
-        <td style="font-size:12px;color:var(--accent2);">${esc(n.url)}</td>
+      <tr data-node-id="${parseInt(n.id)}">
+        <td>
+          <div style="font-weight:500;">${esc(n.label) || '—'}</div>
+          <div style="font-size:11px;color:var(--accent2);word-break:break-all;">${esc(n.url)}</div>
+        </td>
         <td><span class="badge badge-blue">${esc(n.role === 'master' ? '主节点' : '从节点')}</span></td>
-        <td>${nodeStatusBadge(n.status)}</td>
+        <td>${nodeStatusBadge(n)}</td>
         <td style="font-size:11px;color:var(--muted);">${esc(n.version) || '—'}</td>
         <td style="font-size:11px;color:var(--muted);">${n.last_seen_at ? fmtDate(n.last_seen_at) : '—'}</td>
         <td>
@@ -1122,12 +1172,14 @@ function renderNodes() {
 function renderNodeSwitcher() {
   const switcher = document.getElementById('node-switcher');
   const buttons = document.getElementById('node-switcher-buttons');
+  const banner = document.getElementById('remote-node-banner');
   if (!_nodes || _nodes.length === 0) {
     switcher.style.display = 'none';
     return;
   }
   switcher.style.display = 'flex';
   const localActive = _proxyNodeId === null;
+  if (banner) banner.style.display = localActive ? 'none' : 'inline';
   buttons.innerHTML =
     `<button class="btn btn-sm ${localActive ? 'btn-primary' : ''}"
              onclick="switchNode(null)"
@@ -1145,11 +1197,14 @@ function renderNodeSwitcher() {
 
 function renderSyncButtons() {
   const el = document.getElementById('sync-nodes-buttons');
+  const allBtn = document.getElementById('push-all-btn');
   if (!el) return;
   if (!_nodes || _nodes.length === 0) {
     el.innerHTML = '<p style="color:var(--muted);font-size:12px;">请先添加节点</p>';
+    if (allBtn) allBtn.style.display = 'none';
     return;
   }
+  if (allBtn) allBtn.style.display = _nodes.length > 1 ? 'inline-flex' : 'none';
   el.innerHTML = _nodes.map(n =>
     `<button class="btn btn-sm btn-warn"
              onclick="pushSyncToNode(${parseInt(n.id)}, this)">
@@ -1171,24 +1226,43 @@ function switchNode(nodeId) {
 }
 
 async function pingNode(nodeId) {
-  const r = await fetch(BASE + '/api/nodes/' + nodeId + '/ping', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
-  });
-  const d = await r.json().catch(() => ({}));
-  if (d.status === 'ok') {
-    toast('节点在线 ✓', 'success');
-  } else {
-    toast('节点不可达: ' + (d.message || d.status || ''), 'error');
+  // Optimistically mark row as pinging
+  const row = document.querySelector(`tr[data-node-id="${nodeId}"]`);
+  const pingBtn = row ? row.querySelector('.btn-primary') : null;
+  if (pingBtn) { pingBtn.disabled = true; pingBtn.textContent = '…'; }
+
+  try {
+    const r = await fetch(BASE + '/api/nodes/' + nodeId + '/ping', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+    });
+    const d = await r.json().catch(() => ({}));
+
+    // Update the single node in the local array instead of full reload
+    const idx = _nodes.findIndex(n => n.id === nodeId);
+    if (idx !== -1) {
+      _nodes[idx].status = d.status === 'ok' ? 'online' : (d.status || 'error');
+      _nodes[idx].error_message = d.status === 'ok' ? null : (d.message || null);
+      if (d.info) _nodes[idx].version = d.info.version || _nodes[idx].version;
+      _nodes[idx].last_seen_at = new Date().toISOString();
+      renderNodes();
+      renderNodeSwitcher();
+    }
+
+    if (d.status === 'ok') {
+      toast('节点在线 ✓', 'success');
+    } else {
+      toast('节点不可达: ' + (d.message || d.status || ''), 'error');
+    }
+  } finally {
+    if (pingBtn) { pingBtn.disabled = false; pingBtn.textContent = '🔄 Ping'; }
   }
-  loadCluster();
 }
 
 async function pingAllNodes() {
-  for (const n of _nodes) {
-    await pingNode(n.id).catch(() => {});
-  }
-  loadCluster();
+  if (!_nodes || _nodes.length === 0) return;
+  // Parallel ping all nodes
+  await Promise.all(_nodes.map(n => pingNode(n.id).catch(() => {})));
 }
 
 async function removeNode(nodeId) {
@@ -1262,19 +1336,38 @@ function copyShareCode() {
     .catch(() => { input.select(); document.execCommand('copy'); toast('分享码已复制', 'success'); });
 }
 
-function applyShareCode() {
+async function applyShareCode() {
   const code = document.getElementById('node-share-code').value.trim();
+  const statusEl = document.getElementById('share-add-status');
   if (!code) { toast('请粘贴分享码', 'error'); return; }
+  let obj;
   try {
-    const obj = JSON.parse(decodeURIComponent(atob(code).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+    obj = JSON.parse(decodeURIComponent(atob(code).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
     if (!obj.url) throw new Error('missing url');
-    document.getElementById('node-url').value = obj.url;
-    if (obj.label) document.getElementById('node-label').value = obj.label;
-    if (obj.role) document.getElementById('node-role').value = obj.role;
-    document.getElementById('node-share-code').value = '';
-    toast('分享码已解析，点击「一键添加」确认', 'success');
   } catch(e) {
     toast('分享码格式无效', 'error');
+    return;
+  }
+  // Auto-add immediately (one-step)
+  statusEl.textContent = '验证中…'; statusEl.style.color = 'var(--muted)';
+  let label = obj.label || '';
+  if (!label) {
+    try { const u = new URL(obj.url); label = u.hostname + (u.port ? ':' + u.port : ''); } catch(e) { label = obj.url; }
+  }
+  const r = await fetch(BASE + '/api/nodes', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label, url: obj.url, role: obj.role || 'slave' }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (r.ok) {
+    statusEl.textContent = d.message || '节点已添加';
+    statusEl.style.color = d.connectivity === 'online' ? 'var(--success)' : 'var(--warn)';
+    document.getElementById('node-share-code').value = '';
+    loadCluster();
+  } else {
+    statusEl.textContent = d.detail || d.message || '添加失败';
+    statusEl.style.color = 'var(--danger)';
   }
 }
 
@@ -1317,6 +1410,9 @@ async function bulkAddNodes() {
 }
 
 async function pushSyncToNode(nodeId, btn) {
+  const node = _nodes.find(n => n.id === nodeId);
+  const label = node ? (node.label || node.url) : `节点 ${nodeId}`;
+  if (!confirm(`确定将本节点的产品和变化记录推送到「${label}」？\n目标节点的同名数据将被覆盖合并。`)) return;
   const origText = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ 同步中…';
   const r = await fetch(BASE + '/api/nodes/' + nodeId + '/push_sync', {
@@ -1326,9 +1422,61 @@ async function pushSyncToNode(nodeId, btn) {
   btn.disabled = false; btn.textContent = origText;
   const d = await r.json().catch(() => ({}));
   if (r.ok) {
-    toast(`同步成功：产品 ${d.products_received}，变化记录 ${d.changes_received}`, 'success');
+    toast(`推送成功：产品 ${d.products_received}，变化记录 ${d.changes_received}`, 'success');
   } else {
-    toast('同步失败: ' + (d.detail || d.message || r.status), 'error');
+    toast('推送失败: ' + (d.detail || d.message || r.status), 'error');
+  }
+}
+
+async function pushSyncAll(btn) {
+  if (!confirm(`确定将本节点的产品和变化记录推送到全部 ${(_nodes || []).length} 个节点？\n目标节点的同名数据将被覆盖合并。`)) return;
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ 推送中…';
+  try {
+    const r = await fetch(BASE + '/api/nodes/push_sync_all', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      toast(`全量推送完成：成功 ${d.ok_count}/${d.total} 个节点`, d.ok_count === d.total ? 'success' : 'warn');
+    } else {
+      toast('全量推送失败: ' + (d.detail || d.message || r.status), 'error');
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = origText;
+  }
+}
+
+async function saveClusterConfig() {
+  const secretEl = document.getElementById('cfg-cluster-secret');
+  const roleEl = document.getElementById('cfg-node-role');
+  const statusEl = document.getElementById('cluster-cfg-status');
+  const body = {};
+  if (secretEl.value !== '') body.cluster_secret = secretEl.value;
+  body.node_role = roleEl.value;
+  statusEl.textContent = '保存中…'; statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(BASE + '/api/cluster/config', {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      statusEl.textContent = d.message || '已保存';
+      statusEl.style.color = 'var(--success)';
+      secretEl.value = '';
+      loadCluster();
+    } else {
+      statusEl.textContent = d.detail || d.message || '保存失败';
+      statusEl.style.color = 'var(--danger)';
+      secretEl.value = '';
+    }
+  } catch(e) {
+    statusEl.textContent = '请求失败';
+    statusEl.style.color = 'var(--danger)';
+    secretEl.value = '';
   }
 }
 

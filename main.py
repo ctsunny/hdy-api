@@ -15,6 +15,7 @@ import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
+import asyncio
 
 import httpx
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
@@ -86,6 +87,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+_log = logging.getLogger("hdy")
 
 # ---------------------------------------------------------------------------
 # App factory
@@ -701,7 +703,7 @@ async def cluster_info() -> JSONResponse:
     return JSONResponse({
         "status": "ok",
         "node_role": _NODE_ROLE,
-        "version": "1.1.1",
+        "version": "1.2.0",
     })
 
 
@@ -745,6 +747,7 @@ async def add_node(req: NodeCreate) -> JSONResponse:
     # Verify connectivity using the cluster_secret
     initial_status = "unknown"
     version = None
+    error_message: Optional[str] = None
     if _CLUSTER_SECRET:
         try:
             async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
@@ -756,20 +759,35 @@ async def add_node(req: NodeCreate) -> JSONResponse:
                     info_body = r.json()
                     initial_status = "online"
                     version = info_body.get("version")
+                elif r.status_code == 401:
+                    initial_status = "error"
+                    error_message = "集群密钥不匹配（HTTP 401）"
                 else:
                     initial_status = "error"
-        except Exception:
+                    error_message = f"目标节点返回 HTTP {r.status_code}"
+        except httpx.TimeoutException:
             initial_status = "unreachable"
+            error_message = "连接超时"
+        except httpx.ConnectError:
+            initial_status = "unreachable"
+            error_message = "连接被拒绝，请确认地址和端口是否正确"
+        except Exception as exc:
+            _log.warning("add_node connectivity check failed: %s", exc)
+            initial_status = "unreachable"
+            error_message = "连接失败"
 
     node_id = await database.add_cluster_node(req.label, url, req.role)
     if initial_status != "unknown":
-        await database.update_cluster_node_status(node_id, initial_status, version)
+        await database.update_cluster_node_status(node_id, initial_status, version, error_message)
 
+    connect_hint = ""
+    if initial_status != "online" and initial_status != "unknown":
+        connect_hint = f"（{error_message or '连通性检测失败，请确认集群密钥和地址是否正确'}）"
     return JSONResponse({
         "status": "ok",
         "id": node_id,
         "connectivity": initial_status,
-        "message": "节点已添加" + ("" if initial_status == "online" else "（连通性检测失败，请确认集群密钥和地址是否正确）"),
+        "message": "节点已添加" + connect_hint,
     })
 
 
@@ -797,15 +815,30 @@ async def ping_node(node_id: int) -> JSONResponse:
             if r.status_code == 200:
                 info_body = r.json()
                 await database.update_cluster_node_status(
-                    node_id, "online", info_body.get("version")
+                    node_id, "online", info_body.get("version"), None
                 )
                 return JSONResponse({"status": "ok", "info": info_body})
+            elif r.status_code == 401:
+                err = "集群密钥不匹配（HTTP 401）"
+                await database.update_cluster_node_status(node_id, "error", None, err)
+                return JSONResponse({"status": "error", "message": err})
             else:
-                await database.update_cluster_node_status(node_id, "error")
-                return JSONResponse({"status": "error", "http_status": r.status_code})
-    except Exception:
-        await database.update_cluster_node_status(node_id, "unreachable")
-        return JSONResponse({"status": "unreachable", "message": "节点连接失败"})
+                err = f"目标节点返回 HTTP {r.status_code}"
+                await database.update_cluster_node_status(node_id, "error", None, err)
+                return JSONResponse({"status": "error", "message": err})
+    except httpx.TimeoutException:
+        err = "连接超时"
+        await database.update_cluster_node_status(node_id, "unreachable", None, err)
+        return JSONResponse({"status": "unreachable", "message": err})
+    except httpx.ConnectError:
+        err = "连接被拒绝，请确认地址和端口是否正确"
+        await database.update_cluster_node_status(node_id, "unreachable", None, err)
+        return JSONResponse({"status": "unreachable", "message": err})
+    except Exception as exc:
+        _log.warning("ping_node %s failed: %s", node_id, exc)
+        err = "连接失败"
+        await database.update_cluster_node_status(node_id, "unreachable", None, err)
+        return JSONResponse({"status": "unreachable", "message": err})
 
 
 @app.post(f"{BASE_PATH}/api/nodes/{{node_id}}/proxy", dependencies=[Depends(require_auth)])
@@ -878,6 +911,98 @@ async def push_sync_to_node(node_id: int) -> JSONResponse:
                 )
     except Exception:
         raise HTTPException(status_code=502, detail="同步失败")
+
+
+@app.post(f"{BASE_PATH}/api/nodes/push_sync_all", dependencies=[Depends(require_auth)])
+async def push_sync_to_all_nodes() -> JSONResponse:
+    """Push local products and change_log data to all registered nodes in parallel."""
+    if not _CLUSTER_SECRET:
+        raise HTTPException(status_code=503, detail="本节点未配置集群密钥")
+
+    nodes = await database.get_cluster_nodes()
+    if not nodes:
+        return JSONResponse({"status": "ok", "results": [], "message": "没有已注册的节点"})
+
+    products = await database.export_products_for_sync()
+    changes = await database.export_changes_for_sync()
+
+    async def _push_one(node: dict[str, Any]) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+                r = await client.post(
+                    node["url"].rstrip("/") + "/api/cluster/sync",
+                    json={"products": products, "changes": changes},
+                    headers={
+                        "Authorization": f"Bearer {_CLUSTER_SECRET}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if r.status_code == 200:
+                    result = r.json()
+                    return {"node_id": node["id"], "label": node["label"] or node["url"], "status": "ok", **result}
+                else:
+                    return {"node_id": node["id"], "label": node["label"] or node["url"], "status": "error", "message": f"HTTP {r.status_code}"}
+        except Exception as exc:
+            _log.warning("push_sync_all to node %s failed: %s", node["id"], exc)
+            return {"node_id": node["id"], "label": node["label"] or node["url"], "status": "error", "message": "连接失败"}
+
+    results = await asyncio.gather(*[_push_one(n) for n in nodes])
+    ok_count = sum(1 for r in results if r["status"] == "ok")
+    return JSONResponse({
+        "status": "ok",
+        "results": list(results),
+        "ok_count": ok_count,
+        "total": len(nodes),
+    })
+
+
+@app.put(f"{BASE_PATH}/api/cluster/config", dependencies=[Depends(require_auth)])
+async def update_cluster_config(body: dict[str, Any]) -> JSONResponse:
+    """Update cluster_secret and/or node_role in config.json and reload at runtime."""
+    global _CLUSTER_SECRET, _NODE_ROLE  # noqa: PLW0603
+
+    if not CONFIG_PATH.exists():
+        raise HTTPException(status_code=503, detail="config.json 不存在，无法更新")
+
+    with open(CONFIG_PATH) as f:
+        cfg = json.load(f)
+
+    changed = False
+    prev_secret = _CLUSTER_SECRET
+    prev_role = _NODE_ROLE
+    if "cluster_secret" in body:
+        new_secret = str(body["cluster_secret"]).strip()
+        cfg["cluster_secret"] = new_secret
+        changed = True
+    if "node_role" in body:
+        new_role = str(body["node_role"]).strip()
+        if new_role not in ("master", "slave"):
+            raise HTTPException(status_code=400, detail="node_role 必须为 master 或 slave")
+        cfg["node_role"] = new_role
+        changed = True
+
+    if not changed:
+        return JSONResponse({"status": "ok", "message": "无变更"})
+
+    # Write atomically; revert in-memory globals on failure
+    tmp = CONFIG_PATH.with_suffix(".tmp")
+    try:
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        tmp.replace(CONFIG_PATH)
+    except Exception as exc:
+        _log.error("Failed to write cluster config: %s", exc)
+        _CLUSTER_SECRET = prev_secret
+        _NODE_ROLE = prev_role
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="写入配置文件失败，变更已回滚")
+
+    # Apply in-memory changes only after successful file write
+    _CLUSTER_SECRET = cfg.get("cluster_secret", "")
+    _NODE_ROLE = cfg.get("node_role", "master")
+    return JSONResponse({"status": "ok", "message": "集群配置已更新（已实时生效，无需重启）"})
 
 
 _ASSETS_DIR = _STATIC_DIR / "assets"
