@@ -99,14 +99,15 @@ CREATE TABLE IF NOT EXISTS visitor_users (
 );
 
 CREATE TABLE IF NOT EXISTS cluster_nodes (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    label        TEXT,
-    url          TEXT NOT NULL,
-    role         TEXT DEFAULT 'slave',
-    status       TEXT DEFAULT 'unknown',
-    version      TEXT,
-    last_seen_at TEXT,
-    created_at   TEXT
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    label         TEXT,
+    url           TEXT NOT NULL,
+    role          TEXT DEFAULT 'slave',
+    status        TEXT DEFAULT 'unknown',
+    version       TEXT,
+    error_message TEXT,
+    last_seen_at  TEXT,
+    created_at    TEXT
 );
 
 -- Ensure the single config row always exists
@@ -152,6 +153,10 @@ async def init_db() -> None:
             ("notify_price_max", "REAL DEFAULT NULL"),
             ("notify_monthly_price_min", "REAL DEFAULT NULL"),
             ("notify_monthly_price_max", "REAL DEFAULT NULL"),
+        ])
+        # Migrate cluster_nodes table
+        await _add_missing_cols("cluster_nodes", [
+            ("error_message", "TEXT"),
         ])
         await db.commit()
 
@@ -703,7 +708,7 @@ async def get_cluster_nodes() -> list[dict[str, Any]]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, label, url, role, status, version, last_seen_at, created_at "
+            "SELECT id, label, url, role, status, version, error_message, last_seen_at, created_at "
             "FROM cluster_nodes ORDER BY id"
         ) as cur:
             rows = await cur.fetchall()
@@ -714,7 +719,7 @@ async def get_cluster_node_by_id(node_id: int) -> Optional[dict[str, Any]]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, label, url, role, status, version, last_seen_at, created_at "
+            "SELECT id, label, url, role, status, version, error_message, last_seen_at, created_at "
             "FROM cluster_nodes WHERE id=?",
             (node_id,),
         ) as cur:
@@ -732,12 +737,13 @@ async def update_cluster_node_status(
     node_id: int,
     status: str,
     version: Optional[str] = None,
+    error_message: Optional[str] = None,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "UPDATE cluster_nodes SET status=?, version=?, last_seen_at=? WHERE id=?",
-            (status, version, now, node_id),
+            "UPDATE cluster_nodes SET status=?, version=?, error_message=?, last_seen_at=? WHERE id=?",
+            (status, version, error_message, now, node_id),
         )
         await db.commit()
 
