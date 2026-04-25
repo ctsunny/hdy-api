@@ -247,10 +247,16 @@ async def upsert_product(
 
         # Compare fields
         old = dict(existing)
+        # When stock_status is "unknown" (e.g. due to a network/auth transient
+        # error), treat it as "no information" — preserve the last known-good
+        # value and do not report a change.
+        effective_stock_status = (
+            stock_status if stock_status != "unknown" else old.get("stock_status", "unknown")
+        )
         watch = {
             "name": name,
             "price": price,
-            "stock_status": stock_status,
+            "stock_status": effective_stock_status,
         }
         for field, new_val in watch.items():
             if old.get(field) != new_val:
@@ -280,7 +286,7 @@ async def upsert_product(
                    last_checked_at=?, last_changed_at=?,
                    region=?, billingcycle_zh=?, cycles_json=?
                WHERE pid=?""",
-            (name, price, stock_status, raw_json, now, last_changed,
+            (name, price, effective_stock_status, raw_json, now, last_changed,
              region, billingcycle_zh, cycles_json, pid),
         )
         await db.commit()
