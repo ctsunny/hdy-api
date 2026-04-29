@@ -9,12 +9,25 @@
     --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
     --accent: #6c63ff; --accent2: #00d2ff; --danger: #ff4d4d;
     --success: #00e676; --warn: #ffb300; --text: #e0e0e0; --muted: #888;
+    --input-bg: #12151f; --th-bg: #13161f; --row-hover: #1e2130;
+    --btn-dark: #222; --btn-dark2: #333;
+    --badge-gray-bg: #222; --badge-green-bg: #003020; --badge-red-bg: #2a0000;
+    --toast-bg: #333; --toast-success-bg: #003820; --toast-error-bg: #2a0000;
+  }
+  [data-theme="light"] {
+    --bg: #f0f2f5; --surface: #ffffff; --border: #d1d5db;
+    --accent: #6c63ff; --accent2: #0284c7; --danger: #dc2626;
+    --success: #16a34a; --warn: #d97706; --text: #111827; --muted: #6b7280;
+    --input-bg: #f9fafb; --th-bg: #f3f4f6; --row-hover: #f3f4f6;
+    --btn-dark: #e5e7eb; --btn-dark2: #d1d5db;
+    --badge-gray-bg: #e5e7eb; --badge-green-bg: #dcfce7; --badge-red-bg: #fee2e2;
+    --toast-bg: #374151; --toast-success-bg: #dcfce7; --toast-error-bg: #fee2e2;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   header h1 { font-size: 18px; color: var(--accent2); letter-spacing: 1px; }
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 4px; padding: 0 24px; }
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 4px; padding: 0 24px; flex-wrap: wrap; }
   nav button { background: none; border: none; color: var(--muted); padding: 12px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; transition: all .2s; }
   nav button.active, nav button:hover { color: var(--text); border-bottom-color: var(--accent); }
   main { padding: 24px; max-width: 1200px; margin: 0 auto; }
@@ -24,7 +37,7 @@
   .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
   .form-group { display: flex; flex-direction: column; gap: 4px; }
   label { font-size: 12px; color: var(--muted); }
-  input, select { background: #12151f; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
+  input, select { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
   input:focus, select:focus { outline: 1px solid var(--accent); }
   button.btn { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .2s; }
   button.btn:hover { opacity: .85; }
@@ -33,20 +46,23 @@
   .btn-danger { background: var(--danger); color: #fff; }
   .btn-warn { background: var(--warn); color: #000; }
   .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-secondary { background: var(--btn-dark); color: var(--text); }
+  .btn-secondary2 { background: var(--btn-dark2); color: var(--text); }
+  .btn-theme { background: var(--btn-dark2); color: var(--text); }
+  .btn-theme.active { background: var(--accent); color: #fff; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; background: #13161f; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--th-bg); }
   th.sortable { cursor: pointer; user-select: none; }
-  tr:hover td { background: #1e2130; }
+  tr:hover td { background: var(--row-hover); }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: #003020; color: var(--success); }
-  .badge-red { background: #2a0000; color: var(--danger); }
-  .badge-gray { background: #222; color: var(--muted); }
-  .badge-blue { background: #001040; color: var(--accent2); }
-  #toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; display: none; z-index: 999; max-width: 320px; }
+  .badge-green { background: var(--badge-green-bg); color: var(--success); }
+  .badge-red { background: var(--badge-red-bg); color: var(--danger); }
+  .badge-gray { background: var(--badge-gray-bg); color: var(--muted); }
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--toast-bg); color: var(--text); padding: 12px 20px; border-radius: 8px; display: none; z-index: 999; max-width: 320px; }
   #toast.show { display: block; }
-  #toast.success { background: #003820; border: 1px solid var(--success); }
-  #toast.error { background: #2a0000; border: 1px solid var(--danger); }
+  #toast.success { background: var(--toast-success-bg); border: 1px solid var(--success); }
+  #toast.error { background: var(--toast-error-bg); border: 1px solid var(--danger); }
   .login-screen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 9000; align-items: center; justify-content: center; }
   .login-screen.show { display: flex; }
   .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 36px 32px; width: 340px; }
@@ -55,7 +71,7 @@
   .login-box button { width: 100%; margin-top: 8px; }
   .channel-block { border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
   .channel-block h3 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-  .toggle { width: 36px; height: 20px; background: #333; border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
+  .toggle { width: 36px; height: 20px; background: var(--btn-dark2); border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
   .toggle.on { background: var(--accent); }
   .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
   .toggle.on::after { left: 18px; }
@@ -66,25 +82,33 @@
 <!-- Login screen -->
 <div class="login-screen show" id="login-screen">
   <div class="login-box">
-    <h2>🔐 HDY 产品查询</h2>
-    <input type="text" id="vis-user" placeholder="访客账号" autocomplete="username">
-    <input type="password" id="vis-pass" placeholder="访客密码" autocomplete="current-password">
-    <button class="btn btn-primary" onclick="doLogin()">登 录</button>
+    <h2 data-i18n="login.title">🔐 HDY 产品查询</h2>
+    <input type="text" id="vis-user" data-i18n-ph="login.user" placeholder="访客账号" autocomplete="username">
+    <input type="password" id="vis-pass" data-i18n-ph="login.pass" placeholder="访客密码" autocomplete="current-password">
+    <button class="btn btn-primary" onclick="doLogin()" data-i18n="login.btn">登 录</button>
     <p id="login-err" style="color:var(--danger);text-align:center;margin-top:8px;font-size:12px;"></p>
   </div>
 </div>
 
 <header>
-  <h1>🏪 HDY 产品查询</h1>
-  <div style="display:flex;gap:12px;align-items:center;">
+  <h1 data-i18n="header.title">🏪 HDY 产品查询</h1>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <span id="vis-username" style="font-size:12px;color:var(--muted);"></span>
-    <button class="btn btn-sm" onclick="doLogout()" style="background:#333;color:var(--text);">退出</button>
+    <button class="btn btn-sm btn-secondary2" onclick="doLogout()" data-i18n="btn.logout">退出</button>
+    <!-- Theme controls -->
+    <div style="display:flex;gap:4px;align-items:center;border-left:1px solid var(--border);padding-left:8px;">
+      <button class="btn btn-sm btn-theme active" id="btn-theme-dark" onclick="setThemeMode('dark')" data-i18n-title="theme.dark" title="夜晚">🌙</button>
+      <button class="btn btn-sm btn-theme" id="btn-theme-light" onclick="setThemeMode('light')" data-i18n-title="theme.light" title="白天">☀️</button>
+      <button class="btn btn-sm btn-theme" id="btn-theme-system" onclick="setThemeMode('system')" data-i18n-title="theme.system" title="跟随系统">🖥️</button>
+    </div>
+    <!-- Language toggle -->
+    <button class="btn btn-sm btn-secondary2" id="btn-lang" onclick="toggleLang()" style="min-width:42px;border-left:1px solid var(--border);padding-left:8px;">中</button>
   </div>
 </header>
 
 <nav>
-  <button class="active" onclick="showTab('tab-products', this)">📦 产品</button>
-  <button onclick="showTab('tab-account', this)">🔔 通知设置</button>
+  <button class="active" onclick="showTab('tab-products', this)" data-i18n="nav.products">📦 产品</button>
+  <button onclick="showTab('tab-account', this)" data-i18n="nav.account">🔔 通知设置</button>
 </nav>
 
 <main>
@@ -93,53 +117,53 @@
 <div class="tab active" id="tab-products">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2>产品列表</h2>
+      <h2 data-i18n="prod.title">产品列表</h2>
       <div style="display:flex;gap:8px;align-items:center;">
-        <label style="font-size:12px;color:var(--muted);">每页:</label>
+        <label style="font-size:12px;color:var(--muted);" data-i18n="prod.per_page">每页:</label>
         <select id="prod-page-size" onchange="prodPageSizeChange()" style="width:80px;">
           <option value="20">20</option>
           <option value="50">50</option>
           <option value="100">100</option>
         </select>
-        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)">刷新</button>
+        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)" data-i18n="btn.refresh">刷新</button>
       </div>
     </div>
     <!-- Filter Panel -->
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:var(--input-bg);border-radius:6px;border:1px solid var(--border);">
       <div class="form-group">
-        <label>商品名</label>
-        <input type="text" id="filter-name" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
+        <label data-i18n="filter.name">商品名</label>
+        <input type="text" id="filter-name" data-i18n-ph="filter.name_placeholder" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
-        <label>库存状态</label>
+        <label data-i18n="filter.stock">库存状态</label>
         <select id="filter-stock" style="width:120px;" onchange="loadProducts(1)">
-          <option value="">全部</option>
-          <option value="in_stock">有货</option>
-          <option value="out_of_stock">无货</option>
-          <option value="unknown">未知</option>
+          <option value="" data-i18n="filter.all">全部</option>
+          <option value="in_stock" data-i18n="stock.in">有货</option>
+          <option value="out_of_stock" data-i18n="stock.out">无货</option>
+          <option value="unknown" data-i18n="stock.unknown">未知</option>
         </select>
       </div>
       <div class="form-group">
-        <label>周期</label>
+        <label data-i18n="filter.cycle">周期</label>
         <select id="filter-cycle" style="width:120px;" onchange="loadProducts(1)">
-          <option value="">全部</option>
+          <option value="" data-i18n="filter.all">全部</option>
         </select>
       </div>
       <div class="form-group">
-        <label>最低价</label>
+        <label data-i18n="filter.price_min">最低价</label>
         <input type="number" id="filter-price-min" placeholder="0" style="width:90px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
-        <label>最高价</label>
-        <input type="number" id="filter-price-max" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
+        <label data-i18n="filter.price_max">最高价</label>
+        <input type="number" id="filter-price-max" data-i18n-ph="filter.price_max_ph" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group" style="justify-content:flex-end;">
         <label>&nbsp;</label>
-        <button class="btn btn-sm" onclick="clearProductFilters()" style="background:#222;color:var(--text);">重置</button>
+        <button class="btn btn-sm btn-secondary" onclick="clearProductFilters()" data-i18n="btn.reset">重置</button>
       </div>
     </div>
     <table>
-      <thead><tr><th>PID</th><th>名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()">价格 ↕</th><th>周期</th><th>库存状态</th><th>最后变化</th></tr></thead>
+      <thead><tr><th>PID</th><th data-i18n="col.name">名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()" data-i18n="col.price_sort">价格 ↕</th><th data-i18n="col.cycle">周期</th><th data-i18n="col.stock">库存状态</th><th data-i18n="col.last_changed">最后变化</th></tr></thead>
       <tbody id="products-body"></tbody>
     </table>
     <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
@@ -149,20 +173,20 @@
 <!-- Account / Notifications -->
 <div class="tab" id="tab-account">
   <div class="card">
-    <h2>我的账号</h2>
-    <p style="color:var(--muted);font-size:13px;">账号：<strong id="acc-username" style="color:var(--text);">—</strong></p>
+    <h2 data-i18n="account.title">我的账号</h2>
+    <p style="color:var(--muted);font-size:13px;"><span data-i18n="account.username_label">账号：</span><strong id="acc-username" style="color:var(--text);">—</strong></p>
   </div>
   <div class="card">
-    <h2>通知渠道配置</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:8px;">配置属于您的通知渠道。当系统检测到产品变化时，将向已启用的渠道发送通知。</p>
+    <h2 data-i18n="notify.title">通知渠道配置</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px;" data-i18n="notify.vis_desc">配置属于您的通知渠道。当系统检测到产品变化时，将向已启用的渠道发送通知。</p>
     <div class="form-row" style="margin-bottom:14px;">
-      <div class="form-group"><label>通知最低价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-min" placeholder="不限制" style="width:160px;"></div>
-      <div class="form-group"><label>通知最高价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-max" placeholder="不限制" style="width:160px;"></div>
-      <div class="form-group"><label>月租最低价</label><input type="number" step="0.01" id="vis-notify-monthly-min" placeholder="月租单独规则" style="width:160px;"></div>
-      <div class="form-group"><label>月租最高价</label><input type="number" step="0.01" id="vis-notify-monthly-max" placeholder="月租单独规则" style="width:160px;"></div>
+      <div class="form-group"><label data-i18n="cfg.notify_price_min_vis">通知最低价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-min" data-i18n-ph="cfg.no_limit" placeholder="不限制" style="width:160px;"></div>
+      <div class="form-group"><label data-i18n="cfg.notify_price_max_vis">通知最高价 (不填=不限)</label><input type="number" step="0.01" id="vis-notify-price-max" data-i18n-ph="cfg.no_limit" placeholder="不限制" style="width:160px;"></div>
+      <div class="form-group"><label data-i18n="cfg.monthly_price_min">月租最低价</label><input type="number" step="0.01" id="vis-notify-monthly-min" data-i18n-ph="cfg.monthly_rule_ph" placeholder="月租单独规则" style="width:160px;"></div>
+      <div class="form-group"><label data-i18n="cfg.monthly_price_max">月租最高价</label><input type="number" step="0.01" id="vis-notify-monthly-max" data-i18n-ph="cfg.monthly_rule_ph" placeholder="月租单独规则" style="width:160px;"></div>
     </div>
     <div id="vis-notify-channels"></div>
-    <button class="btn btn-primary" onclick="saveVisitorNotify()" style="margin-top:8px;">保存通知配置</button>
+    <button class="btn btn-primary" onclick="saveVisitorNotify()" style="margin-top:8px;" data-i18n="notify.save">保存通知配置</button>
   </div>
 </div>
 
@@ -174,6 +198,108 @@
 const BASE = window.location.pathname.replace(/\/+$/, '').replace(/\/visitor$/, '');
 let _token = sessionStorage.getItem('hdy_visitor_token') || '';
 let _visitorMe = null;
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+const _THEME_KEY = 'hdy_theme';
+let _themeMode = localStorage.getItem(_THEME_KEY) || 'dark';
+let _sysDarkMQ = window.matchMedia('(prefers-color-scheme: dark)');
+
+function applyTheme() {
+  const isDark = _themeMode === 'dark' || (_themeMode === 'system' && _sysDarkMQ.matches);
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  ['dark','light','system'].forEach(m => {
+    const btn = document.getElementById('btn-theme-' + m);
+    if (btn) btn.classList.toggle('active', _themeMode === m);
+  });
+}
+
+function setThemeMode(mode) {
+  _themeMode = mode;
+  localStorage.setItem(_THEME_KEY, mode);
+  applyTheme();
+}
+
+_sysDarkMQ.addEventListener('change', () => { if (_themeMode === 'system') applyTheme(); });
+applyTheme();
+
+// ── i18n ───────────────────────────────────────────────────────────────────
+const I18N = {
+  zh: {
+    'login.title': '🔐 HDY 产品查询', 'login.user': '访客账号', 'login.pass': '访客密码', 'login.btn': '登 录',
+    'header.title': '🏪 HDY 产品查询',
+    'btn.logout': '退出', 'btn.refresh': '刷新', 'btn.reset': '重置',
+    'theme.dark': '夜晚', 'theme.light': '白天', 'theme.system': '跟随系统',
+    'nav.products': '📦 产品', 'nav.account': '🔔 通知设置',
+    'prod.title': '产品列表', 'prod.per_page': '每页:',
+    'filter.name': '商品名', 'filter.name_placeholder': '输入关键词', 'filter.stock': '库存状态',
+    'filter.cycle': '周期', 'filter.price_min': '最低价', 'filter.price_max': '最高价',
+    'filter.price_max_ph': '不限', 'filter.all': '全部',
+    'stock.in': '有货', 'stock.out': '无货', 'stock.unknown': '未知',
+    'col.name': '名称', 'col.price_sort': '价格 ↕', 'col.cycle': '周期', 'col.stock': '库存状态', 'col.last_changed': '最后变化',
+    'account.title': '我的账号', 'account.username_label': '账号：',
+    'notify.title': '通知渠道配置',
+    'notify.vis_desc': '配置属于您的通知渠道。当系统检测到产品变化时，将向已启用的渠道发送通知。',
+    'notify.save': '保存通知配置',
+    'cfg.notify_price_min_vis': '通知最低价 (不填=不限)', 'cfg.notify_price_max_vis': '通知最高价 (不填=不限)',
+    'cfg.monthly_price_min': '月租最低价', 'cfg.monthly_price_max': '月租最高价',
+    'cfg.no_limit': '不限制', 'cfg.monthly_rule_ph': '月租单独规则',
+  },
+  en: {
+    'login.title': '🔐 HDY Products', 'login.user': 'Visitor Username', 'login.pass': 'Visitor Password', 'login.btn': 'Login',
+    'header.title': '🏪 HDY Products',
+    'btn.logout': 'Logout', 'btn.refresh': 'Refresh', 'btn.reset': 'Reset',
+    'theme.dark': 'Night', 'theme.light': 'Day', 'theme.system': 'Follow System',
+    'nav.products': '📦 Products', 'nav.account': '🔔 Notification Settings',
+    'prod.title': 'Product List', 'prod.per_page': 'Per page:',
+    'filter.name': 'Name', 'filter.name_placeholder': 'Enter keyword', 'filter.stock': 'Stock Status',
+    'filter.cycle': 'Cycle', 'filter.price_min': 'Min Price', 'filter.price_max': 'Max Price',
+    'filter.price_max_ph': 'No limit', 'filter.all': 'All',
+    'stock.in': 'In Stock', 'stock.out': 'Out of Stock', 'stock.unknown': 'Unknown',
+    'col.name': 'Name', 'col.price_sort': 'Price ↕', 'col.cycle': 'Cycle', 'col.stock': 'Stock', 'col.last_changed': 'Last Changed',
+    'account.title': 'My Account', 'account.username_label': 'Username: ',
+    'notify.title': 'Notification Channels',
+    'notify.vis_desc': 'Configure your notification channels. You will be notified when product changes are detected.',
+    'notify.save': 'Save Notify Config',
+    'cfg.notify_price_min_vis': 'Notify Min Price (blank = no limit)', 'cfg.notify_price_max_vis': 'Notify Max Price (blank = no limit)',
+    'cfg.monthly_price_min': 'Monthly Min Price', 'cfg.monthly_price_max': 'Monthly Max Price',
+    'cfg.no_limit': 'No limit', 'cfg.monthly_rule_ph': 'Monthly rule',
+  }
+};
+
+let _lang = localStorage.getItem('hdy_lang') || 'zh';
+
+function t(key) {
+  return (I18N[_lang] && I18N[_lang][key]) || (I18N['zh'][key]) || key;
+}
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val) el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    const val = t(key);
+    if (val) el.placeholder = val;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const val = t(key);
+    if (val) el.title = val;
+  });
+  const langBtn = document.getElementById('btn-lang');
+  if (langBtn) langBtn.textContent = _lang === 'zh' ? 'EN' : '中';
+}
+
+function toggleLang() {
+  _lang = _lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('hdy_lang', _lang);
+  applyI18n();
+  updatePriceSortHeader();
+}
+
+applyI18n();
 
 // ── HTML escape helper ─────────────────────────────────────────────────────
 function esc(s) {
@@ -208,9 +334,9 @@ async function doLogin() {
       await init();
     } else {
       const d = await r.json().catch(() => ({}));
-      document.getElementById('login-err').textContent = d.detail || '账号或密码错误';
+      document.getElementById('login-err').textContent = d.detail || (_lang === 'en' ? 'Invalid username or password' : '账号或密码错误');
     }
-  } catch (e) { document.getElementById('login-err').textContent = '连接失败: ' + e.message; }
+  } catch (e) { document.getElementById('login-err').textContent = (_lang === 'en' ? 'Connection failed: ' : '连接失败: ') + e.message; }
 }
 
 function doLogout() {
@@ -255,9 +381,10 @@ function prodPageSizeChange() { loadProducts(1); }
 function updatePriceSortHeader() {
   const el = document.getElementById('products-price-sort');
   if (!el) return;
-  if (_prodPriceSort === 'asc') el.textContent = '价格 ↑';
-  else if (_prodPriceSort === 'desc') el.textContent = '价格 ↓';
-  else el.textContent = '价格 ↕';
+  const base = _lang === 'en' ? 'Price' : '价格';
+  if (_prodPriceSort === 'asc') el.textContent = base + ' ↑';
+  else if (_prodPriceSort === 'desc') el.textContent = base + ' ↓';
+  else el.textContent = base + ' ↕';
 }
 
 function togglePriceSort() {
@@ -288,7 +415,7 @@ async function loadProductFilterOptions() {
     const opts = await r.json();
     const cycleSel = document.getElementById('filter-cycle');
     const curCycle = cycleSel.value;
-    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
+    cycleSel.innerHTML = `<option value="">${t('filter.all')}</option>` + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
   } catch(e) {}
 }
 
@@ -336,13 +463,13 @@ function renderProductPagination(total, page, pageSize) {
   el.innerHTML = '';
   const info = document.createElement('span');
   info.style.cssText = 'font-size:12px;color:var(--muted);margin-right:8px;';
-  info.textContent = `共 ${total} 条，第 ${page}/${pages} 页`;
+  info.textContent = _lang === 'en' ? `Total: ${total}, Page ${page}/${pages}` : `共 ${total} 条，第 ${page}/${pages} 页`;
   el.appendChild(info);
 
   function addBtn(label, targetPage, isCurrent) {
     const b = document.createElement('button');
     b.className = 'btn btn-sm' + (isCurrent ? ' btn-primary' : '');
-    b.style.background = isCurrent ? '' : '#222'; b.style.color = '#fff';
+    b.style.background = isCurrent ? '' : 'var(--btn-dark)'; b.style.color = isCurrent ? '' : 'var(--text)';
     b.textContent = label;
     b.disabled = isCurrent;
     b.onclick = () => loadProducts(targetPage);
@@ -359,23 +486,23 @@ function renderProductPagination(total, page, pageSize) {
 }
 
 function stockBadge(s) {
-  if (s === 'in_stock') return '<span class="badge badge-green">有货</span>';
-  if (s === 'out_of_stock') return '<span class="badge badge-red">无货</span>';
-  return '<span class="badge badge-gray">未知</span>';
+  if (s === 'in_stock') return `<span class="badge badge-green">${t('stock.in')}</span>`;
+  if (s === 'out_of_stock') return `<span class="badge badge-red">${t('stock.out')}</span>`;
+  return `<span class="badge badge-gray">${t('stock.unknown')}</span>`;
 }
 
 // ── Account / Notification tab ─────────────────────────────────────────────
 const CHANNELS = [
-  { key: 'telegram', name: 'Telegram Bot', fields: [['bot_token','Bot Token'],['chat_id','Chat ID']] },
-  { key: 'wecom', name: '企业微信机器人', fields: [['webhook_url','Webhook URL']] },
-  { key: 'dingtalk', name: '钉钉机器人', fields: [['webhook_url','Webhook URL'],['secret','加签 Secret (可选)']] },
-  { key: 'feishu', name: '飞书机器人', fields: [['webhook_url','Webhook URL']] },
-  { key: 'serverchan', name: 'Server酱 (微信)', fields: [['sendkey','SendKey']] },
-  { key: 'bark', name: 'Bark (iOS)', fields: [['device_key','Device Key']] },
-  { key: 'pushplus', name: 'PushPlus', fields: [['token','Token']] },
-  { key: 'discord', name: 'Discord Webhook', fields: [['webhook_url','Webhook URL']] },
-  { key: 'email', name: 'SMTP 邮件', fields: [['host','服务器'],['port','端口'],['user','账号'],['password','密码'],['to','收件人'],['use_tls','TLS(true/false)']] },
-  { key: 'webhook', name: '自定义 Webhook', fields: [['url','URL'],['method','方法(POST)'],['headers','Headers(JSON)'],['payload','Payload(JSON,{{title}},{{body}})']] },
+  { key: 'telegram', name: 'Telegram Bot', name_en: 'Telegram Bot', fields: [['bot_token','Bot Token'],['chat_id','Chat ID']] },
+  { key: 'wecom', name: '企业微信机器人', name_en: 'WeCom Bot', fields: [['webhook_url','Webhook URL']] },
+  { key: 'dingtalk', name: '钉钉机器人', name_en: 'DingTalk Bot', fields: [['webhook_url','Webhook URL'],['secret','加签 Secret (可选)']] },
+  { key: 'feishu', name: '飞书机器人', name_en: 'Feishu Bot', fields: [['webhook_url','Webhook URL']] },
+  { key: 'serverchan', name: 'Server酱 (微信)', name_en: 'ServerChan (WeChat)', fields: [['sendkey','SendKey']] },
+  { key: 'bark', name: 'Bark (iOS)', name_en: 'Bark (iOS)', fields: [['device_key','Device Key']] },
+  { key: 'pushplus', name: 'PushPlus', name_en: 'PushPlus', fields: [['token','Token']] },
+  { key: 'discord', name: 'Discord Webhook', name_en: 'Discord Webhook', fields: [['webhook_url','Webhook URL']] },
+  { key: 'email', name: 'SMTP 邮件', name_en: 'SMTP Email', fields: [['host','服务器/Server'],['port','端口/Port'],['user','账号/User'],['password','密码/Password'],['to','收件人/To'],['use_tls','TLS(true/false)']] },
+  { key: 'webhook', name: '自定义 Webhook', name_en: 'Custom Webhook', fields: [['url','URL'],['method','方法/Method(POST)'],['headers','Headers(JSON)'],['payload','Payload(JSON,{{title}},{{body}})']] },
 ];
 
 let _notifyCfg = {};
@@ -409,9 +536,9 @@ function renderNotifyChannels() {
       <div class="channel-block">
         <h3>
           <div class="toggle ${enabled ? 'on' : ''}" id="vtog-${ch.key}" onclick="toggleChannel('${ch.key}')"></div>
-          ${ch.name}
-          <button class="btn btn-sm" style="margin-left:auto;background:#222;color:var(--text);"
-            onclick="testChannel('${ch.key}')">测试</button>
+          ${_lang === 'en' ? ch.name_en : ch.name}
+          <button class="btn btn-sm btn-secondary" style="margin-left:auto;"
+            onclick="testChannel('${ch.key}')">${_lang === 'en' ? 'Test' : '测试'}</button>
         </h3>
         <div class="form-row">${fields}</div>
       </div>`;
@@ -453,7 +580,7 @@ async function saveVisitorNotify() {
     notify_monthly_price_max: parseOpt('vis-notify-monthly-max'),
   };
   const r = await api('PUT', '/api/visitor/me/notify', body);
-  toast(r.ok ? '通知配置已保存' : '保存失败', r.ok ? 'success' : 'error');
+  toast(r.ok ? (_lang === 'en' ? 'Notification settings saved' : '通知配置已保存') : (_lang === 'en' ? 'Save failed' : '保存失败'), r.ok ? 'success' : 'error');
   if (r.ok) _notifyCfg = nc;
 }
 
@@ -462,7 +589,7 @@ async function testChannel(key) {
   const cfg = nc[key] || {};
   const r = await api('POST', '/api/visitor/notify/test', { channel: key, config: cfg });
   const d = await r.json();
-  toast(d.success ? `${key} 发送成功 ✓` : `${key} 发送失败 ✗`, d.success ? 'success' : 'error');
+  toast(d.success ? `${key} ${_lang==='en'?'sent ✓':'发送成功 ✓'}` : `${key} ${_lang==='en'?'failed ✗':'发送失败 ✗'}`, d.success ? 'success' : 'error');
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────
@@ -472,7 +599,7 @@ function fmtDate(s) {
   const hasTz = /(?:Z|[+-]\d{2}:\d{2})$/.test(str);
   const d = new Date(hasTz ? str : (str + 'Z'));
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  return d.toLocaleString(_lang === 'en' ? 'en-US' : 'zh-CN', { timeZone: 'Asia/Shanghai' });
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -481,7 +608,7 @@ async function init() {
     const r = await api('GET', '/api/visitor/me');
     if (!r.ok) { showLogin(); return; }
     _visitorMe = await r.json();
-    document.getElementById('vis-username').textContent = '访客: ' + (_visitorMe.username || '');
+    document.getElementById('vis-username').textContent = (_lang === 'en' ? 'Visitor: ' : '访客: ') + (_visitorMe.username || '');
     document.getElementById('acc-username').textContent = _visitorMe.username || '—';
     updatePriceSortHeader();
     await loadProducts(1);
