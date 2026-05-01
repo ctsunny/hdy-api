@@ -9,29 +9,14 @@
     --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
     --accent: #6c63ff; --accent2: #00d2ff; --danger: #ff4d4d;
     --success: #00e676; --warn: #ffb300; --text: #e0e0e0; --muted: #888;
-    --input-bg: #12151f; --th-bg: #13161f; --row-hover: #1e2130;
-    --pre-bg: #0a0d16; --btn-dark: #222; --btn-dark2: #333;
-    --badge-gray-bg: #222; --badge-green-bg: #003020; --badge-red-bg: #2a0000; --badge-blue-bg: #001040;
-    --toast-bg: #333; --toast-success-bg: #003820; --toast-error-bg: #2a0000;
-    --status-badge-bg: #333;
-  }
-  [data-theme="light"] {
-    --bg: #f0f2f5; --surface: #ffffff; --border: #d1d5db;
-    --accent: #6c63ff; --accent2: #0284c7; --danger: #dc2626;
-    --success: #16a34a; --warn: #d97706; --text: #111827; --muted: #6b7280;
-    --input-bg: #f9fafb; --th-bg: #f3f4f6; --row-hover: #f3f4f6;
-    --pre-bg: #f3f4f6; --btn-dark: #e5e7eb; --btn-dark2: #d1d5db;
-    --badge-gray-bg: #e5e7eb; --badge-green-bg: #dcfce7; --badge-red-bg: #fee2e2; --badge-blue-bg: #dbeafe;
-    --toast-bg: #374151; --toast-success-bg: #dcfce7; --toast-error-bg: #fee2e2;
-    --status-badge-bg: #e5e7eb;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
   header h1 { font-size: 18px; color: var(--accent2); letter-spacing: 1px; }
-  header #status-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--status-badge-bg); color: var(--muted); }
-  header #status-badge.running { background: var(--badge-green-bg); color: var(--success); }
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 4px; padding: 0 24px; flex-wrap: wrap; }
+  header #status-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #333; color: var(--muted); }
+  header #status-badge.running { background: #003020; color: var(--success); }
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 4px; padding: 0 24px; }
   nav button { background: none; border: none; color: var(--muted); padding: 12px 16px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; transition: all .2s; }
   nav button.active, nav button:hover { color: var(--text); border-bottom-color: var(--accent); }
   main { padding: 24px; max-width: 1200px; margin: 0 auto; }
@@ -41,8 +26,8 @@
   .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
   .form-group { display: flex; flex-direction: column; gap: 4px; }
   label { font-size: 12px; color: var(--muted); }
-  input, select, textarea { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
-  input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); }
+  input, select { background: #12151f; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
+  input:focus, select:focus { outline: 1px solid var(--accent); }
   button.btn { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .2s; }
   button.btn:hover { opacity: .85; }
   .btn-primary { background: var(--accent); color: #fff; }
@@ -50,31 +35,27 @@
   .btn-danger { background: var(--danger); color: #fff; }
   .btn-warn { background: var(--warn); color: #000; }
   .btn-sm { padding: 5px 12px; font-size: 12px; }
-  .btn-secondary { background: var(--btn-dark); color: var(--text); }
-  .btn-secondary2 { background: var(--btn-dark2); color: var(--text); }
-  .btn-theme { background: var(--btn-dark2); color: var(--text); }
-  .btn-theme.active { background: var(--accent); color: #fff; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--th-bg); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: #13161f; }
   th.sortable { cursor: pointer; user-select: none; }
-  tr:hover td { background: var(--row-hover); }
+  tr:hover td { background: #1e2130; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: var(--badge-green-bg); color: var(--success); }
-  .badge-red { background: var(--badge-red-bg); color: var(--danger); }
-  .badge-gray { background: var(--badge-gray-bg); color: var(--muted); }
-  .badge-blue { background: var(--badge-blue-bg); color: var(--accent2); }
-  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--toast-bg); color: #fff; padding: 12px 20px; border-radius: 8px; display: none; z-index: 999; max-width: 320px; }
+  .badge-green { background: #003020; color: var(--success); }
+  .badge-red { background: #2a0000; color: var(--danger); }
+  .badge-gray { background: #222; color: var(--muted); }
+  .badge-blue { background: #001040; color: var(--accent2); }
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; display: none; z-index: 999; max-width: 320px; }
   #toast.show { display: block; }
-  #toast.success { background: var(--toast-success-bg); border: 1px solid var(--success); color: var(--text); }
-  #toast.error { background: var(--toast-error-bg); border: 1px solid var(--danger); color: var(--text); }
+  #toast.success { background: #003820; border: 1px solid var(--success); }
+  #toast.error { background: #2a0000; border: 1px solid var(--danger); }
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
   .stat .val { font-size: 28px; font-weight: 700; color: var(--accent2); }
   .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .channel-block { border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
   .channel-block h3 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-  .toggle { width: 36px; height: 20px; background: var(--btn-dark2); border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
+  .toggle { width: 36px; height: 20px; background: #333; border-radius: 10px; position: relative; cursor: pointer; transition: background .2s; }
   .toggle.on { background: var(--accent); }
   .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
   .toggle.on::after { left: 18px; }
@@ -86,12 +67,9 @@
   .login-box button { width: 100%; margin-top: 8px; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .pid-progress { height: 4px; background: var(--btn-dark); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+  .pid-progress { height: 4px; background: #222; border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
   .pid-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s; }
-  pre { background: var(--pre-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; color: var(--muted); max-height: 200px; overflow-y: auto; }
-  .panel-bg { background: var(--input-bg); }
-  details summary { color: var(--muted); }
-  details[open] summary { color: var(--text); }
+  pre { background: #0a0d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; color: #aaa; max-height: 200px; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -99,48 +77,40 @@
 <!-- Login screen -->
 <div class="login-screen show" id="login-screen">
   <div class="login-box">
-    <h2 data-i18n="login.title">🔐 HDY 监控系统</h2>
-    <input type="text" id="adm-user" data-i18n-ph="login.user" placeholder="管理员账号" autocomplete="username">
-    <input type="password" id="adm-pass" data-i18n-ph="login.pass" placeholder="管理员密码" autocomplete="current-password">
-    <button class="btn btn-primary" onclick="doLogin()" data-i18n="login.btn">登 录</button>
+    <h2>🔐 HDY 监控系统</h2>
+    <input type="text" id="adm-user" placeholder="管理员账号" autocomplete="username">
+    <input type="password" id="adm-pass" placeholder="管理员密码" autocomplete="current-password">
+    <button class="btn btn-primary" onclick="doLogin()">登 录</button>
     <p id="login-err" style="color:var(--danger);text-align:center;margin-top:8px;font-size:12px;"></p>
   </div>
 </div>
 
 <header>
   <h1><span id="site-title-text">🏪 HDY 库存监控</span> <span style="font-size:12px;color:var(--muted);font-weight:400;">v1.2.0</span></h1>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    <span id="status-badge" data-i18n="status.stopped">已停止</span>
-    <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()" data-i18n="btn.start">▶ 启动</button>
-    <button class="btn btn-sm btn-danger" id="btn-stop" onclick="stopCrawler()" style="display:none" data-i18n="btn.stop">⏹ 停止</button>
-    <button class="btn btn-sm btn-secondary2" id="btn-pause-notify" onclick="toggleNotifyPause()" style="display:none" data-i18n="btn.pause_notify">🔔 暂停推送</button>
-    <button class="btn btn-sm btn-secondary2" id="btn-filter-sold-out" onclick="toggleFilterSoldOut()" style="display:none" data-i18n="btn.filter_sold_out">📦 过滤售罄</button>
-    <!-- Theme controls -->
-    <div style="display:flex;gap:4px;align-items:center;border-left:1px solid var(--border);padding-left:8px;">
-      <button class="btn btn-sm btn-theme active" id="btn-theme-dark" onclick="setThemeMode('dark')" data-i18n-title="theme.dark" title="夜晚">🌙</button>
-      <button class="btn btn-sm btn-theme" id="btn-theme-light" onclick="setThemeMode('light')" data-i18n-title="theme.light" title="白天">☀️</button>
-      <button class="btn btn-sm btn-theme" id="btn-theme-system" onclick="setThemeMode('system')" data-i18n-title="theme.system" title="跟随系统">🖥️</button>
-    </div>
-    <!-- Language toggle -->
-    <button class="btn btn-sm btn-secondary2" id="btn-lang" onclick="toggleLang()" style="min-width:42px;border-left:1px solid var(--border);padding-left:8px;">中</button>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <span id="status-badge">已停止</span>
+    <button class="btn btn-sm btn-success" id="btn-start" onclick="startCrawler()">▶ 启动</button>
+    <button class="btn btn-sm btn-danger" id="btn-stop" onclick="stopCrawler()" style="display:none">⏹ 停止</button>
+    <button class="btn btn-sm" id="btn-pause-notify" onclick="toggleNotifyPause()" style="background:#333;color:var(--text);display:none" title="暂停/恢复推送通知（本轮有效，下轮自动恢复）">🔔 暂停推送</button>
+    <button class="btn btn-sm" id="btn-filter-sold-out" onclick="toggleFilterSoldOut()" style="background:#333;color:var(--text);display:none" title="开启后售罄消息不推送，关闭后推送所有消息">📦 过滤售罄</button>
   </div>
 </header>
 
 <!-- Node switcher bar (shown only when cluster nodes are registered) -->
 <div id="node-switcher" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 24px;align-items:center;gap:8px;overflow-x:auto;">
-  <span style="font-size:11px;color:var(--muted);flex-shrink:0;" data-i18n="node.label">🌐 节点:</span>
+  <span style="font-size:11px;color:var(--muted);flex-shrink:0;">🌐 节点:</span>
   <div id="node-switcher-buttons" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-  <span id="remote-node-banner" style="display:none;font-size:11px;color:#f59e0b;font-weight:600;margin-left:8px;" data-i18n="node.remote_warning">⚠️ 当前操作的是远程节点</span>
+  <span id="remote-node-banner" style="display:none;font-size:11px;color:#f59e0b;font-weight:600;margin-left:8px;">⚠️ 当前操作的是远程节点</span>
 </div>
 
 <nav>
-  <button class="active" onclick="showTab('tab-dashboard', this)" data-i18n="nav.dashboard">📊 总览</button>
-  <button onclick="showTab('tab-products', this)" data-i18n="nav.products">📦 产品</button>
-  <button onclick="showTab('tab-changes', this)" data-i18n="nav.changes">🔔 变化记录</button>
-  <button onclick="showTab('tab-config', this)" data-i18n="nav.config">⚙️ 配置</button>
-  <button onclick="showTab('tab-notify', this)" data-i18n="nav.notify">📡 通知渠道</button>
-  <button onclick="showTab('tab-cluster', this)" data-i18n="nav.cluster">🌐 集群</button>
-  <button onclick="showTab('tab-visitors', this)" data-i18n="nav.visitors">👥 访客管理</button>
+  <button class="active" onclick="showTab('tab-dashboard', this)">📊 总览</button>
+  <button onclick="showTab('tab-products', this)">📦 产品</button>
+  <button onclick="showTab('tab-changes', this)">🔔 变化记录</button>
+  <button onclick="showTab('tab-config', this)">⚙️ 配置</button>
+  <button onclick="showTab('tab-notify', this)">📡 通知渠道</button>
+  <button onclick="showTab('tab-cluster', this)">🌐 集群</button>
+  <button onclick="showTab('tab-visitors', this)">👥 访客管理</button>
 </nav>
 
 <main>
@@ -148,20 +118,20 @@
 <!-- Dashboard -->
 <div class="tab active" id="tab-dashboard">
   <div class="stat-grid">
-    <div class="stat"><div class="val" id="s-current-pid">—</div><div class="lbl" data-i18n="dash.current_pid">当前 PID</div></div>
-    <div class="stat"><div class="val" id="s-checked">0</div><div class="lbl" data-i18n="dash.checked">已检查</div></div>
-    <div class="stat"><div class="val" id="s-changed">0</div><div class="lbl" data-i18n="dash.changed">有变化</div></div>
-    <div class="stat"><div class="val" id="s-range">—</div><div class="lbl" data-i18n="dash.pid_range">PID 范围</div></div>
+    <div class="stat"><div class="val" id="s-current-pid">—</div><div class="lbl">当前 PID</div></div>
+    <div class="stat"><div class="val" id="s-checked">0</div><div class="lbl">已检查</div></div>
+    <div class="stat"><div class="val" id="s-changed">0</div><div class="lbl">有变化</div></div>
+    <div class="stat"><div class="val" id="s-range">—</div><div class="lbl">PID 范围</div></div>
   </div>
   <div class="card">
-    <h2 data-i18n="dash.progress">爬取进度</h2>
+    <h2>爬取进度</h2>
     <div class="pid-progress"><div class="pid-progress-bar" id="progress-bar" style="width:0%"></div></div>
-    <p id="progress-text" style="font-size:12px;color:var(--muted)" data-i18n="dash.not_running">未运行</p>
+    <p id="progress-text" style="font-size:12px;color:var(--muted)">未运行</p>
   </div>
   <div class="card">
-    <h2><span data-i18n="dash.recent_changes">最近变化</span> <span style="font-size:12px;color:var(--muted)" data-i18n="dash.recent_changes_hint">(最新 10 条)</span></h2>
+    <h2>最近变化 <span style="font-size:12px;color:var(--muted)">(最新 10 条)</span></h2>
     <table id="dash-changes-table">
-      <thead><tr><th data-i18n="col.time">时间</th><th>PID</th><th data-i18n="col.field">字段</th><th data-i18n="col.old_val">旧值</th><th data-i18n="col.new_val">新值</th></tr></thead>
+      <thead><tr><th>时间</th><th>PID</th><th>字段</th><th>旧值</th><th>新值</th></tr></thead>
       <tbody id="dash-changes-body"></tbody>
     </table>
   </div>
@@ -171,53 +141,53 @@
 <div class="tab" id="tab-products">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 data-i18n="prod.title">产品列表</h2>
+      <h2>产品列表</h2>
       <div style="display:flex;gap:8px;align-items:center;">
-        <label style="font-size:12px;color:var(--muted);" data-i18n="prod.per_page">每页:</label>
+        <label style="font-size:12px;color:var(--muted);">每页:</label>
         <select id="prod-page-size" onchange="prodPageSizeChange()" style="width:80px;">
           <option value="20">20</option>
           <option value="50">50</option>
           <option value="100">100</option>
         </select>
-        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)" data-i18n="btn.refresh">刷新</button>
+        <button class="btn btn-sm btn-primary" onclick="loadProducts(1)">刷新</button>
       </div>
     </div>
     <!-- Filter Panel -->
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:var(--input-bg);border-radius:6px;border:1px solid var(--border);">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding:12px;background:#12151f;border-radius:6px;border:1px solid var(--border);">
       <div class="form-group">
-        <label data-i18n="filter.name">商品名</label>
-        <input type="text" id="filter-name" data-i18n-ph="filter.name_placeholder" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
+        <label>商品名</label>
+        <input type="text" id="filter-name" placeholder="输入关键词" style="width:140px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
-        <label data-i18n="filter.stock">库存状态</label>
+        <label>库存状态</label>
         <select id="filter-stock" style="width:120px;" onchange="loadProducts(1)">
-          <option value="" data-i18n="filter.all">全部</option>
-          <option value="in_stock" data-i18n="stock.in">有货</option>
-          <option value="out_of_stock" data-i18n="stock.out">无货</option>
-          <option value="unknown" data-i18n="stock.unknown">未知</option>
+          <option value="">全部</option>
+          <option value="in_stock">有货</option>
+          <option value="out_of_stock">无货</option>
+          <option value="unknown">未知</option>
         </select>
       </div>
       <div class="form-group">
-        <label data-i18n="filter.cycle">周期</label>
+        <label>周期</label>
         <select id="filter-cycle" style="width:120px;" onchange="loadProducts(1)">
-          <option value="" data-i18n="filter.all">全部</option>
+          <option value="">全部</option>
         </select>
       </div>
       <div class="form-group">
-        <label data-i18n="filter.price_min">最低价</label>
+        <label>最低价</label>
         <input type="number" id="filter-price-min" placeholder="0" style="width:90px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group">
-        <label data-i18n="filter.price_max">最高价</label>
-        <input type="number" id="filter-price-max" data-i18n-ph="filter.price_max_ph" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
+        <label>最高价</label>
+        <input type="number" id="filter-price-max" placeholder="不限" style="width:90px;" oninput="_debounceProducts()">
       </div>
       <div class="form-group" style="justify-content:flex-end;">
         <label>&nbsp;</label>
-        <button class="btn btn-sm btn-secondary" onclick="clearProductFilters()" data-i18n="btn.reset">重置</button>
+        <button class="btn btn-sm" onclick="clearProductFilters()" style="background:#222;color:var(--text);">重置</button>
       </div>
     </div>
     <table>
-      <thead><tr><th>PID</th><th data-i18n="col.name">名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()" data-i18n="col.price_sort">价格 ↕</th><th data-i18n="col.cycle">周期</th><th data-i18n="col.stock">库存状态</th><th data-i18n="col.last_checked">最后检查</th><th data-i18n="col.last_changed">最后变化</th><th data-i18n="col.action">操作</th></tr></thead>
+      <thead><tr><th>PID</th><th>名称</th><th id="products-price-sort" class="sortable" onclick="togglePriceSort()">价格 ↕</th><th>周期</th><th>库存状态</th><th>最后检查</th><th>最后变化</th><th>操作</th></tr></thead>
       <tbody id="products-body"></tbody>
     </table>
     <div id="products-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;"></div>
@@ -228,15 +198,15 @@
 <div class="tab" id="tab-changes">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 data-i18n="changes.title">全部变化记录</h2>
+      <h2>全部变化记录</h2>
       <div style="display:flex;gap:8px;">
-        <input type="number" id="filter-pid" data-i18n-ph="changes.filter_pid" placeholder="PID 过滤" style="width:120px;" oninput="loadChanges()">
-        <button class="btn btn-sm btn-primary" onclick="loadChanges()" data-i18n="btn.refresh">刷新</button>
-        <button class="btn btn-sm btn-danger" onclick="clearChanges()" data-i18n="btn.clear_all">🗑 一键清空</button>
+        <input type="number" id="filter-pid" placeholder="PID 过滤" style="width:120px;" oninput="loadChanges()">
+        <button class="btn btn-sm btn-primary" onclick="loadChanges()">刷新</button>
+        <button class="btn btn-sm btn-danger" onclick="clearChanges()">🗑 一键清空</button>
       </div>
     </div>
     <table>
-      <thead><tr><th data-i18n="col.time">时间</th><th>PID</th><th data-i18n="col.field">字段</th><th data-i18n="col.old_val">旧值</th><th data-i18n="col.new_val">新值</th></tr></thead>
+      <thead><tr><th>时间</th><th>PID</th><th>字段</th><th>旧值</th><th>新值</th></tr></thead>
       <tbody id="changes-body"></tbody>
     </table>
     <div id="changes-pagination" style="margin-top:12px;display:flex;gap:8px;justify-content:center;"></div>
@@ -246,78 +216,72 @@
 <!-- Config -->
 <div class="tab" id="tab-config">
   <div class="card">
-    <h2 data-i18n="cfg.appearance">站点外观</h2>
+    <h2>站点外观</h2>
     <div class="form-row">
       <div class="form-group">
-        <label for="cfg-site-title" data-i18n="cfg.site_title">自定义站点标题</label>
-        <input type="text" id="cfg-site-title" data-i18n-ph="cfg.site_title_ph" placeholder="留空使用默认标题" style="width:300px;">
+        <label for="cfg-site-title">自定义站点标题</label>
+        <input type="text" id="cfg-site-title" placeholder="留空使用默认标题" style="width:300px;">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="saveSiteTitle()" data-i18n="cfg.save_title">保存标题</button>
+    <button class="btn btn-primary" onclick="saveSiteTitle()">保存标题</button>
   </div>
 
   <div class="card">
-    <h2 data-i18n="cfg.crawl_settings">爬取设置</h2>
+    <h2>爬取设置</h2>
     <div class="form-row">
-      <div class="form-group"><label data-i18n="cfg.start_pid">起始 PID (范围)</label><input type="number" id="cfg-start" value="1150"></div>
-      <div class="form-group"><label data-i18n="cfg.end_pid">结束 PID</label><input type="number" id="cfg-end" value="1200"></div>
-      <div class="form-group"><label data-i18n="cfg.exec_start_pid">执行起始 PID</label><input type="number" id="cfg-exec-start" data-i18n-ph="cfg.exec_start_pid_ph" placeholder="默认同起始 PID"></div>
-      <div class="form-group"><label data-i18n="cfg.interval">间隔(ms)</label><input type="number" id="cfg-interval" value="1500"></div>
-      <div class="form-group"><label data-i18n="cfg.loop_mode">循环模式</label>
-        <select id="cfg-loop">
-          <option value="false" data-i18n="cfg.off">关闭</option>
-          <option value="true" data-i18n="cfg.on">开启</option>
-        </select>
+      <div class="form-group"><label>起始 PID (范围)</label><input type="number" id="cfg-start" value="1150"></div>
+      <div class="form-group"><label>结束 PID</label><input type="number" id="cfg-end" value="1200"></div>
+      <div class="form-group"><label>执行起始 PID</label><input type="number" id="cfg-exec-start" placeholder="默认同起始 PID"></div>
+      <div class="form-group"><label>间隔(ms)</label><input type="number" id="cfg-interval" value="1500"></div>
+      <div class="form-group"><label>循环模式</label>
+        <select id="cfg-loop"><option value="false">关闭</option><option value="true">开启</option></select>
       </div>
-      <div class="form-group"><label data-i18n="cfg.scan_order">扫描顺序</label>
-        <select id="cfg-scan-reverse">
-          <option value="false" data-i18n="cfg.asc_order">关闭（正序）</option>
-          <option value="true" data-i18n="cfg.desc_order">开启（倒序）</option>
-        </select>
+      <div class="form-group"><label>扫描顺序</label>
+        <select id="cfg-scan-reverse"><option value="false">关闭（正序）</option><option value="true">开启（倒序）</option></select>
       </div>
-      <div class="form-group"><label for="cfg-notify-price-min" data-i18n="cfg.notify_price_min">通知最低价</label><input type="number" step="0.01" id="cfg-notify-price-min" data-i18n-ph="cfg.no_limit" placeholder="不限制"></div>
-      <div class="form-group"><label for="cfg-notify-price-max" data-i18n="cfg.notify_price_max">通知最高价</label><input type="number" step="0.01" id="cfg-notify-price-max" data-i18n-ph="cfg.no_limit" placeholder="不限制"></div>
-      <div class="form-group"><label for="cfg-notify-monthly-price-min" data-i18n="cfg.monthly_price_min">月租最低价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-min" data-i18n-ph="cfg.monthly_rule_ph" placeholder="月租单独规则"></div>
-      <div class="form-group"><label for="cfg-notify-monthly-price-max" data-i18n="cfg.monthly_price_max">月租最高价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-max" data-i18n-ph="cfg.monthly_rule_ph" placeholder="月租单独规则"></div>
+      <div class="form-group"><label for="cfg-notify-price-min">通知最低价</label><input type="number" step="0.01" id="cfg-notify-price-min" placeholder="不限制"></div>
+      <div class="form-group"><label for="cfg-notify-price-max">通知最高价</label><input type="number" step="0.01" id="cfg-notify-price-max" placeholder="不限制"></div>
+      <div class="form-group"><label for="cfg-notify-monthly-price-min">月租最低价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-min" placeholder="月租单独规则"></div>
+      <div class="form-group"><label for="cfg-notify-monthly-price-max">月租最高价</label><input type="number" step="0.01" id="cfg-notify-monthly-price-max" placeholder="月租单独规则"></div>
     </div>
-    <button class="btn btn-primary" onclick="saveConfig()" data-i18n="cfg.save_config">保存配置</button>
+    <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
   </div>
 
   <div class="card">
-    <h2 data-i18n="cfg.site_accounts">网站账号管理 (szhdy.com)</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;" data-i18n="cfg.site_accounts_desc">使用账号 + API Key 登录，系统保存 JWT Token 用于库存检测。可保存多个账号，点击「启用」切换使用中账号。</p>
+    <h2>网站账号管理 (szhdy.com)</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">使用账号 + API Key 登录，系统保存 JWT Token 用于库存检测。可保存多个账号，点击「启用」切换使用中账号。</p>
     <!-- Saved Accounts List -->
     <div id="site-accounts-list" style="margin-bottom:14px;"></div>
     <!-- Add Account Form -->
     <div style="border:1px solid var(--border);border-radius:6px;padding:12px;">
-      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;" data-i18n="cfg.add_account">➕ 添加账号</div>
+      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;">➕ 添加账号</div>
       <div class="form-row">
-        <div class="form-group"><label data-i18n="cfg.label">备注名</label><input type="text" id="site-label" data-i18n-ph="cfg.label_ph" placeholder="可选备注"></div>
-        <div class="form-group"><label data-i18n="cfg.username">账号</label><input type="text" id="site-user" data-i18n-ph="cfg.site_user_ph" placeholder="szhdy 账号"></div>
-        <div class="form-group"><label>API Key</label><input type="text" id="site-apikey" data-i18n-ph="cfg.apikey_ph" placeholder="szhdy API Key"></div>
+        <div class="form-group"><label>备注名</label><input type="text" id="site-label" placeholder="可选备注"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="site-user" placeholder="szhdy 账号"></div>
+        <div class="form-group"><label>API Key</label><input type="text" id="site-apikey" placeholder="szhdy API Key"></div>
       </div>
-      <button class="btn btn-primary" onclick="addSiteAccount()" data-i18n="cfg.login_save">登录并保存账号</button>
+      <button class="btn btn-primary" onclick="addSiteAccount()">登录并保存账号</button>
       <span id="cookie-status" style="margin-left:12px;font-size:12px;"></span>
     </div>
   </div>
 
   <div class="card">
-    <h2 data-i18n="cfg.manual_cookie">手动 Cookie</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:8px;" data-i18n="cfg.manual_cookie_desc">也可直接从浏览器复制 Cookie 字符串粘贴</p>
+    <h2>手动 Cookie</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:8px;">也可直接从浏览器复制 Cookie 字符串粘贴</p>
     <div class="form-row">
-      <div class="form-group"><label data-i18n="cfg.cookie_string">Cookie 字符串</label>
-        <input type="text" id="manual-cookie" data-i18n-ph="cfg.cookie_string_ph" placeholder="key=val; key2=val2..." style="width:400px;">
+      <div class="form-group"><label>Cookie 字符串</label>
+        <input type="text" id="manual-cookie" placeholder="key=val; key2=val2..." style="width:400px;">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="saveManualCookie()" data-i18n="cfg.save_cookie">保存 Cookie</button>
+    <button class="btn btn-primary" onclick="saveManualCookie()">保存 Cookie</button>
   </div>
 
   <div class="card">
-    <h2 data-i18n="cfg.backup_restore">🗄️ 全站备份与恢复</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;" data-i18n="cfg.backup_desc">备份将下载完整的 SQLite 数据库文件（含产品、变化记录、配置、账号等所有数据）。恢复时请上传之前下载的备份文件，<strong style="color:var(--warn);" data-i18n="cfg.backup_warn">当前数据将被完全替换，操作不可撤销。</strong></p>
+    <h2>🗄️ 全站备份与恢复</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">备份将下载完整的 SQLite 数据库文件（含产品、变化记录、配置、账号等所有数据）。恢复时请上传之前下载的备份文件，<strong style="color:var(--warn);">当前数据将被完全替换，操作不可撤销。</strong></p>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-primary" onclick="downloadBackup()" data-i18n="cfg.download_backup">⬇️ 下载备份</button>
-      <label class="btn btn-warn" style="cursor:pointer;" data-i18n="cfg.restore_backup">
+      <button class="btn btn-primary" onclick="downloadBackup()">⬇️ 下载备份</button>
+      <label class="btn btn-warn" style="cursor:pointer;">
         ⬆️ 恢复备份
         <input type="file" id="restore-file" accept=".db" style="display:none;" onchange="uploadRestore(this)">
       </label>
@@ -329,10 +293,10 @@
 <!-- Notify -->
 <div class="tab" id="tab-notify">
   <div class="card">
-    <h2 data-i18n="notify.title">通知渠道配置</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;" data-i18n="notify.desc">开启并配置需要的渠道，点击「保存」后生效，可点「测试」验证</p>
+    <h2>通知渠道配置</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">开启并配置需要的渠道，点击「保存」后生效，可点「测试」验证</p>
     <div id="notify-channels"></div>
-    <button class="btn btn-primary" onclick="saveNotifyConfig()" style="margin-top:8px;" data-i18n="notify.save">保存通知配置</button>
+    <button class="btn btn-primary" onclick="saveNotifyConfig()" style="margin-top:8px;">保存通知配置</button>
   </div>
 </div>
 
@@ -340,37 +304,37 @@
 <div class="tab" id="tab-cluster">
   <!-- Local node info -->
   <div class="card">
-    <h2 data-i18n="cluster.local_info">本节点信息</h2>
-    <div id="cluster-local-info" style="font-size:13px;color:var(--muted);" data-i18n="cluster.loading">加载中…</div>
+    <h2>本节点信息</h2>
+    <div id="cluster-local-info" style="font-size:13px;color:var(--muted);">加载中…</div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn btn-sm btn-secondary2" onclick="genShareCode()" data-i18n="cluster.gen_share_code">📋 生成分享码</button>
-      <span style="font-size:11px;color:var(--muted);" data-i18n="cluster.gen_share_code_hint">生成后可在其他节点粘贴，免手动输入地址</span>
+      <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="genShareCode()">📋 生成分享码</button>
+      <span style="font-size:11px;color:var(--muted);">生成后可在其他节点粘贴，免手动输入地址</span>
     </div>
     <div id="share-code-box" style="display:none;margin-top:10px;">
-      <label data-i18n="cluster.share_code_label">分享码（复制后在目标节点的「粘贴分享码」处粘贴）</label>
+      <label>分享码（复制后在目标节点的「粘贴分享码」处粘贴）</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
-        <input type="text" id="share-code-output" readonly style="flex:1;font-family:monospace;font-size:11px;background:var(--pre-bg);width:auto;">
-        <button class="btn btn-sm btn-secondary2" onclick="copyShareCode()" data-i18n="cluster.copy">📋 复制</button>
+        <input type="text" id="share-code-output" readonly style="flex:1;font-family:monospace;font-size:11px;background:#0a0d16;width:auto;">
+        <button class="btn btn-sm" style="background:#333;color:var(--text);flex-shrink:0;" onclick="copyShareCode()">📋 复制</button>
       </div>
     </div>
     <!-- Cluster config -->
     <details style="margin-top:14px;">
-      <summary style="cursor:pointer;font-size:12px;padding:4px 0;user-select:none;" data-i18n="cluster.config_summary">⚙️ 修改集群配置（cluster_secret / node_role）</summary>
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">⚙️ 修改集群配置（cluster_secret / node_role）</summary>
       <div style="margin-top:10px;">
         <div class="form-row">
           <div class="form-group" style="flex:1;min-width:200px;">
-            <label data-i18n="cluster.secret_label">集群密钥（留空则清除）</label>
-            <input type="password" id="cfg-cluster-secret" data-i18n-ph="cluster.secret_ph" placeholder="各节点需一致" style="width:100%;" autocomplete="new-password">
+            <label>集群密钥（留空则清除）</label>
+            <input type="password" id="cfg-cluster-secret" placeholder="各节点需一致" style="width:100%;" autocomplete="new-password">
           </div>
           <div class="form-group">
-            <label data-i18n="cluster.role_label">本节点角色</label>
+            <label>本节点角色</label>
             <select id="cfg-node-role" style="width:110px;">
-              <option value="master" data-i18n="cluster.master">主节点</option>
-              <option value="slave" data-i18n="cluster.slave">从节点</option>
+              <option value="master">主节点</option>
+              <option value="slave">从节点</option>
             </select>
           </div>
           <div class="form-group" style="align-self:flex-end;">
-            <button class="btn btn-sm btn-primary" onclick="saveClusterConfig()" data-i18n="cluster.save">💾 保存</button>
+            <button class="btn btn-sm btn-primary" onclick="saveClusterConfig()">💾 保存</button>
           </div>
         </div>
         <span id="cluster-cfg-status" style="font-size:12px;"></span>
@@ -381,10 +345,10 @@
   <!-- Registered nodes -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 data-i18n="cluster.node_list">集群节点列表</h2>
-      <button class="btn btn-sm btn-primary" onclick="pingAllNodes()" data-i18n="cluster.refresh_all">🔄 全部刷新</button>
+      <h2>集群节点列表</h2>
+      <button class="btn btn-sm btn-primary" onclick="pingAllNodes()">🔄 全部刷新</button>
     </div>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;" data-i18n="cluster.node_list_desc">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
       注册后，在顶部节点切换栏选择远程节点，所有操作将自动转发到该节点执行。
     </p>
     <div id="nodes-list"></div>
@@ -392,30 +356,30 @@
 
   <!-- Add node -->
   <div class="card">
-    <h2 data-i18n="cluster.add_node">➕ 添加节点</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;" data-i18n="cluster.add_node_desc">
+    <h2>➕ 添加节点</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">
       输入另一台 HDY Monitor 的访问地址（需在 config.json 中配置相同的 <code>cluster_secret</code>）。
     </p>
 
     <!-- Method 1: Smart URL one-click add -->
     <div class="form-row" style="margin-bottom:4px;">
       <div class="form-group" style="flex:1;min-width:200px;">
-        <label data-i18n="cluster.server_addr">服务器地址 (含路径前缀)</label>
+        <label>服务器地址 (含路径前缀)</label>
         <input type="text" id="node-url" placeholder="http://1.2.3.4:8080/abc" style="width:100%;">
       </div>
       <div class="form-group">
-        <label data-i18n="cluster.node_label">备注名（可选）</label>
-        <input type="text" id="node-label" data-i18n-ph="cluster.node_label_ph" placeholder="如：节点2" style="width:140px;">
+        <label>备注名（可选）</label>
+        <input type="text" id="node-label" placeholder="如：节点2" style="width:140px;">
       </div>
       <div class="form-group">
-        <label data-i18n="cluster.role_label">角色</label>
+        <label>角色</label>
         <select id="node-role" style="width:100px;">
-          <option value="slave" data-i18n="cluster.slave">从节点</option>
-          <option value="master" data-i18n="cluster.master">主节点</option>
+          <option value="slave">从节点</option>
+          <option value="master">主节点</option>
         </select>
       </div>
       <div class="form-group" style="align-self:flex-end;">
-        <button class="btn btn-primary" onclick="addNode()" data-i18n="cluster.one_click_add">⚡ 一键添加</button>
+        <button class="btn btn-primary" onclick="addNode()">⚡ 一键添加</button>
       </div>
     </div>
     <div style="min-height:18px;margin-bottom:14px;">
@@ -425,11 +389,11 @@
     <!-- Method 2: Share code (one-step auto-add) -->
     <div class="form-row" style="margin-bottom:4px;">
       <div class="form-group" style="flex:1;min-width:200px;">
-        <label data-i18n="cluster.paste_share_code">粘贴分享码（从其他节点的「本节点信息」生成，自动解码并添加）</label>
+        <label>粘贴分享码（从其他节点的「本节点信息」生成，自动解码并添加）</label>
         <input type="text" id="node-share-code" placeholder="eyJ1cmwiOi…" style="width:100%;">
       </div>
       <div class="form-group" style="align-self:flex-end;">
-        <button class="btn btn-sm btn-secondary2" onclick="applyShareCode()" data-i18n="cluster.decode_add">📥 解码并添加</button>
+        <button class="btn btn-sm" style="background:#333;color:var(--text);" onclick="applyShareCode()">📥 解码并添加</button>
       </div>
     </div>
     <div style="min-height:18px;margin-bottom:6px;">
@@ -438,14 +402,14 @@
 
     <!-- Method 3: Bulk JSON import (collapsible) -->
     <details style="margin-top:12px;">
-      <summary style="cursor:pointer;font-size:12px;padding:4px 0;user-select:none;" data-i18n="cluster.bulk_import">📦 批量导入（JSON 数组）</summary>
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0;user-select:none;">📦 批量导入（JSON 数组）</summary>
       <div style="margin-top:8px;">
-        <textarea id="bulk-nodes-json" rows="4" style="width:100%;background:var(--pre-bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:monospace;font-size:12px;resize:vertical;">[
+        <textarea id="bulk-nodes-json" rows="4" style="width:100%;background:#0a0d16;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:monospace;font-size:12px;resize:vertical;">[
   {"label":"节点2","url":"http://1.2.3.4:8080","role":"slave"},
   {"label":"节点3","url":"http://5.6.7.8:8080","role":"slave"}
 ]</textarea>
         <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-          <button class="btn btn-sm btn-primary" onclick="bulkAddNodes()" data-i18n="cluster.bulk_add">📦 批量添加</button>
+          <button class="btn btn-sm btn-primary" onclick="bulkAddNodes()">📦 批量添加</button>
           <span id="bulk-add-status" style="font-size:12px;"></span>
         </div>
       </div>
@@ -455,10 +419,10 @@
   <!-- Data sync -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <h2 data-i18n="cluster.data_sync">数据同步</h2>
-      <button class="btn btn-sm btn-warn" id="push-all-btn" onclick="pushSyncAll(this)" style="display:none;" data-i18n="cluster.push_all">⬆️ 一键推送全部</button>
+      <h2>数据同步</h2>
+      <button class="btn btn-sm btn-warn" id="push-all-btn" onclick="pushSyncAll(this)" style="display:none;">⬆️ 一键推送全部</button>
     </div>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;" data-i18n="cluster.data_sync_desc">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
       将本节点的产品数据和变化记录推送到目标节点（覆盖合并）。推送前会显示确认提示。
     </p>
     <div id="sync-nodes-buttons" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
@@ -468,19 +432,19 @@
 <!-- Visitors -->
 <div class="tab" id="tab-visitors">
   <div class="card">
-    <h2 data-i18n="visitors.title">访客账号管理</h2>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;" data-i18n="visitors.desc">
+    <h2>访客账号管理</h2>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">
       访客可通过 <a href="visitor" target="_blank" style="color:var(--accent2);">/visitor</a> 页面使用账号密码登录，仅可查看产品列表并配置自己的通知渠道。
     </p>
     <div id="visitor-list" style="margin-bottom:14px;"></div>
     <div style="border:1px solid var(--border);border-radius:6px;padding:12px;">
-      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;" data-i18n="visitors.create">➕ 创建访客账号</div>
+      <div style="font-size:13px;color:var(--accent2);margin-bottom:10px;font-weight:600;">➕ 创建访客账号</div>
       <div class="form-row">
-        <div class="form-group"><label data-i18n="cfg.label">备注名</label><input type="text" id="visitor-label" data-i18n-ph="cfg.label_ph" placeholder="可选备注"></div>
-        <div class="form-group"><label data-i18n="cfg.username">账号</label><input type="text" id="visitor-username" data-i18n-ph="visitors.username_ph" placeholder="登录账号"></div>
-        <div class="form-group"><label data-i18n="visitors.password">密码</label><input type="password" id="visitor-password" data-i18n-ph="visitors.password_ph" placeholder="登录密码"></div>
+        <div class="form-group"><label>备注名</label><input type="text" id="visitor-label" placeholder="可选备注"></div>
+        <div class="form-group"><label>账号</label><input type="text" id="visitor-username" placeholder="登录账号"></div>
+        <div class="form-group"><label>密码</label><input type="password" id="visitor-password" placeholder="登录密码"></div>
       </div>
-      <button class="btn btn-primary" onclick="createVisitor()" data-i18n="visitors.create_btn">创建账号</button>
+      <button class="btn btn-primary" onclick="createVisitor()">创建账号</button>
     </div>
   </div>
 </div>
@@ -498,206 +462,11 @@ let _proxyNodeId = null;   // null = local node; number = remote node id
 let _nodes = [];           // registered cluster nodes
 let _localConfig = null;   // cached /api/config response for this node
 
-// ── Theme ──────────────────────────────────────────────────────────────────
-const _THEME_KEY = 'hdy_theme';
-let _themeMode = localStorage.getItem(_THEME_KEY) || 'dark';
-let _sysDarkMQ = window.matchMedia('(prefers-color-scheme: dark)');
-
-function applyTheme() {
-  const isDark = _themeMode === 'dark' || (_themeMode === 'system' && _sysDarkMQ.matches);
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  ['dark','light','system'].forEach(m => {
-    const btn = document.getElementById('btn-theme-' + m);
-    if (btn) btn.classList.toggle('active', _themeMode === m);
-  });
+// ── HTML escape helper (prevent XSS) ──────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
-function setThemeMode(mode) {
-  _themeMode = mode;
-  localStorage.setItem(_THEME_KEY, mode);
-  applyTheme();
-}
-
-_sysDarkMQ.addEventListener('change', () => { if (_themeMode === 'system') applyTheme(); });
-applyTheme();
-
-// ── i18n ───────────────────────────────────────────────────────────────────
-const I18N = {
-  zh: {
-    'login.title': '🔐 HDY 监控系统', 'login.user': '管理员账号', 'login.pass': '管理员密码', 'login.btn': '登 录',
-    'status.running': '运行中', 'status.stopped': '已停止',
-    'btn.start': '▶ 启动', 'btn.stop': '⏹ 停止', 'btn.pause_notify': '🔔 暂停推送',
-    'btn.filter_sold_out': '📦 过滤售罄', 'btn.refresh': '刷新', 'btn.reset': '重置', 'btn.clear_all': '🗑 一键清空',
-    'theme.dark': '夜晚', 'theme.light': '白天', 'theme.system': '跟随系统',
-    'node.label': '🌐 节点:', 'node.remote_warning': '⚠️ 当前操作的是远程节点',
-    'nav.dashboard': '📊 总览', 'nav.products': '📦 产品', 'nav.changes': '🔔 变化记录',
-    'nav.config': '⚙️ 配置', 'nav.notify': '📡 通知渠道', 'nav.cluster': '🌐 集群', 'nav.visitors': '👥 访客管理',
-    'dash.current_pid': '当前 PID', 'dash.checked': '已检查', 'dash.changed': '有变化', 'dash.pid_range': 'PID 范围',
-    'dash.progress': '爬取进度', 'dash.not_running': '未运行', 'dash.recent_changes': '最近变化', 'dash.recent_changes_hint': '(最新 10 条)',
-    'col.time': '时间', 'col.field': '字段', 'col.old_val': '旧值', 'col.new_val': '新值',
-    'col.name': '名称', 'col.price_sort': '价格 ↕', 'col.cycle': '周期', 'col.stock': '库存状态',
-    'col.last_checked': '最后检查', 'col.last_changed': '最后变化', 'col.action': '操作',
-    'filter.name': '商品名', 'filter.name_placeholder': '输入关键词', 'filter.stock': '库存状态',
-    'filter.cycle': '周期', 'filter.price_min': '最低价', 'filter.price_max': '最高价',
-    'filter.price_max_ph': '不限', 'filter.all': '全部',
-    'stock.in': '有货', 'stock.out': '无货', 'stock.unknown': '未知',
-    'changes.title': '全部变化记录', 'changes.filter_pid': 'PID 过滤',
-    'cfg.appearance': '站点外观', 'cfg.site_title': '自定义站点标题', 'cfg.site_title_ph': '留空使用默认标题',
-    'cfg.save_title': '保存标题', 'cfg.crawl_settings': '爬取设置',
-    'cfg.start_pid': '起始 PID (范围)', 'cfg.end_pid': '结束 PID',
-    'cfg.exec_start_pid': '执行起始 PID', 'cfg.exec_start_pid_ph': '默认同起始 PID',
-    'cfg.interval': '间隔(ms)', 'cfg.loop_mode': '循环模式', 'cfg.off': '关闭', 'cfg.on': '开启',
-    'cfg.scan_order': '扫描顺序', 'cfg.asc_order': '关闭（正序）', 'cfg.desc_order': '开启（倒序）',
-    'cfg.notify_price_min': '通知最低价', 'cfg.notify_price_max': '通知最高价',
-    'cfg.monthly_price_min': '月租最低价', 'cfg.monthly_price_max': '月租最高价',
-    'cfg.no_limit': '不限制', 'cfg.monthly_rule_ph': '月租单独规则', 'cfg.save_config': '保存配置',
-    'cfg.site_accounts': '网站账号管理 (szhdy.com)',
-    'cfg.site_accounts_desc': '使用账号 + API Key 登录，系统保存 JWT Token 用于库存检测。可保存多个账号，点击「启用」切换使用中账号。',
-    'cfg.add_account': '➕ 添加账号', 'cfg.label': '备注名', 'cfg.label_ph': '可选备注',
-    'cfg.username': '账号', 'cfg.site_user_ph': 'szhdy 账号', 'cfg.apikey_ph': 'szhdy API Key',
-    'cfg.login_save': '登录并保存账号', 'cfg.manual_cookie': '手动 Cookie',
-    'cfg.manual_cookie_desc': '也可直接从浏览器复制 Cookie 字符串粘贴',
-    'cfg.cookie_string': 'Cookie 字符串', 'cfg.cookie_string_ph': 'key=val; key2=val2...',
-    'cfg.save_cookie': '保存 Cookie', 'cfg.backup_restore': '🗄️ 全站备份与恢复',
-    'cfg.backup_desc': '备份将下载完整的 SQLite 数据库文件（含产品、变化记录、配置、账号等所有数据）。恢复时请上传之前下载的备份文件，',
-    'cfg.backup_warn': '当前数据将被完全替换，操作不可撤销。',
-    'cfg.download_backup': '⬇️ 下载备份', 'cfg.restore_backup': '⬆️ 恢复备份',
-    'notify.title': '通知渠道配置', 'notify.desc': '开启并配置需要的渠道，点击「保存」后生效，可点「测试」验证', 'notify.save': '保存通知配置',
-    'cluster.local_info': '本节点信息', 'cluster.loading': '加载中…',
-    'cluster.gen_share_code': '📋 生成分享码', 'cluster.gen_share_code_hint': '生成后可在其他节点粘贴，免手动输入地址',
-    'cluster.share_code_label': '分享码（复制后在目标节点的「粘贴分享码」处粘贴）', 'cluster.copy': '📋 复制',
-    'cluster.config_summary': '⚙️ 修改集群配置（cluster_secret / node_role）',
-    'cluster.secret_label': '集群密钥（留空则清除）', 'cluster.secret_ph': '各节点需一致',
-    'cluster.role_label': '本节点角色', 'cluster.master': '主节点', 'cluster.slave': '从节点', 'cluster.save': '💾 保存',
-    'cluster.node_list': '集群节点列表', 'cluster.refresh_all': '🔄 全部刷新',
-    'cluster.node_list_desc': '注册后，在顶部节点切换栏选择远程节点，所有操作将自动转发到该节点执行。',
-    'cluster.add_node': '➕ 添加节点',
-    'cluster.add_node_desc': '输入另一台 HDY Monitor 的访问地址（需在 config.json 中配置相同的 cluster_secret）。',
-    'cluster.server_addr': '服务器地址 (含路径前缀)', 'cluster.node_label': '备注名（可选）',
-    'cluster.node_label_ph': '如：节点2', 'cluster.one_click_add': '⚡ 一键添加',
-    'cluster.paste_share_code': '粘贴分享码（从其他节点的「本节点信息」生成，自动解码并添加）',
-    'cluster.decode_add': '📥 解码并添加', 'cluster.bulk_import': '📦 批量导入（JSON 数组）',
-    'cluster.bulk_add': '📦 批量添加', 'cluster.data_sync': '数据同步',
-    'cluster.push_all': '⬆️ 一键推送全部', 'cluster.data_sync_desc': '将本节点的产品数据和变化记录推送到目标节点（覆盖合并）。推送前会显示确认提示。',
-    'visitors.title': '访客账号管理', 'visitors.desc': '访客可通过 /visitor 页面使用账号密码登录，仅可查看产品列表并配置自己的通知渠道。',
-    'visitors.create': '➕ 创建访客账号', 'visitors.username_ph': '登录账号',
-    'visitors.password': '密码', 'visitors.password_ph': '登录密码', 'visitors.create_btn': '创建账号',
-    'prod.title': '产品列表', 'prod.per_page': '每页:',
-    'col.label': '备注', 'col.username': '账号', 'col.added_time': '添加时间', 'col.created_time': '创建时间',
-    'col.status': '状态', 'col.node': '节点', 'col.role': '角色', 'col.version': '版本', 'col.last_seen': '最后在线',
-  },
-  en: {
-    'login.title': '🔐 HDY Monitor', 'login.user': 'Admin Username', 'login.pass': 'Admin Password', 'login.btn': 'Login',
-    'status.running': 'Running', 'status.stopped': 'Stopped',
-    'btn.start': '▶ Start', 'btn.stop': '⏹ Stop', 'btn.pause_notify': '🔔 Pause Notify',
-    'btn.filter_sold_out': '📦 Filter Sold Out', 'btn.refresh': 'Refresh', 'btn.reset': 'Reset', 'btn.clear_all': '🗑 Clear All',
-    'theme.dark': 'Night', 'theme.light': 'Day', 'theme.system': 'Follow System',
-    'node.label': '🌐 Node:', 'node.remote_warning': '⚠️ Operating on remote node',
-    'nav.dashboard': '📊 Dashboard', 'nav.products': '📦 Products', 'nav.changes': '🔔 Change Log',
-    'nav.config': '⚙️ Config', 'nav.notify': '📡 Notifications', 'nav.cluster': '🌐 Cluster', 'nav.visitors': '👥 Visitors',
-    'dash.current_pid': 'Current PID', 'dash.checked': 'Checked', 'dash.changed': 'Changed', 'dash.pid_range': 'PID Range',
-    'dash.progress': 'Crawl Progress', 'dash.not_running': 'Not Running', 'dash.recent_changes': 'Recent Changes', 'dash.recent_changes_hint': '(Latest 10)',
-    'col.time': 'Time', 'col.field': 'Field', 'col.old_val': 'Old Value', 'col.new_val': 'New Value',
-    'col.name': 'Name', 'col.price_sort': 'Price ↕', 'col.cycle': 'Cycle', 'col.stock': 'Stock',
-    'col.last_checked': 'Last Checked', 'col.last_changed': 'Last Changed', 'col.action': 'Action',
-    'filter.name': 'Name', 'filter.name_placeholder': 'Enter keyword', 'filter.stock': 'Stock Status',
-    'filter.cycle': 'Cycle', 'filter.price_min': 'Min Price', 'filter.price_max': 'Max Price',
-    'filter.price_max_ph': 'No limit', 'filter.all': 'All',
-    'stock.in': 'In Stock', 'stock.out': 'Out of Stock', 'stock.unknown': 'Unknown',
-    'changes.title': 'All Changes', 'changes.filter_pid': 'Filter by PID',
-    'cfg.appearance': 'Appearance', 'cfg.site_title': 'Custom Site Title', 'cfg.site_title_ph': 'Leave blank for default',
-    'cfg.save_title': 'Save Title', 'cfg.crawl_settings': 'Crawl Settings',
-    'cfg.start_pid': 'Start PID (range)', 'cfg.end_pid': 'End PID',
-    'cfg.exec_start_pid': 'Exec Start PID', 'cfg.exec_start_pid_ph': 'Default = Start PID',
-    'cfg.interval': 'Interval (ms)', 'cfg.loop_mode': 'Loop Mode', 'cfg.off': 'Off', 'cfg.on': 'On',
-    'cfg.scan_order': 'Scan Order', 'cfg.asc_order': 'Off (Ascending)', 'cfg.desc_order': 'On (Descending)',
-    'cfg.notify_price_min': 'Notify Min Price', 'cfg.notify_price_max': 'Notify Max Price',
-    'cfg.monthly_price_min': 'Monthly Min Price', 'cfg.monthly_price_max': 'Monthly Max Price',
-    'cfg.no_limit': 'No limit', 'cfg.monthly_rule_ph': 'Monthly rule', 'cfg.save_config': 'Save Config',
-    'cfg.site_accounts': 'Site Accounts (szhdy.com)',
-    'cfg.site_accounts_desc': 'Login with username + API Key. JWT Token will be saved for inventory checking. Multiple accounts supported; click Activate to switch.',
-    'cfg.add_account': '➕ Add Account', 'cfg.label': 'Label', 'cfg.label_ph': 'Optional label',
-    'cfg.username': 'Username', 'cfg.site_user_ph': 'szhdy username', 'cfg.apikey_ph': 'szhdy API Key',
-    'cfg.login_save': 'Login & Save Account', 'cfg.manual_cookie': 'Manual Cookie',
-    'cfg.manual_cookie_desc': 'Or paste cookie string directly from your browser',
-    'cfg.cookie_string': 'Cookie String', 'cfg.cookie_string_ph': 'key=val; key2=val2...',
-    'cfg.save_cookie': 'Save Cookie', 'cfg.backup_restore': '🗄️ Backup & Restore',
-    'cfg.backup_desc': 'Backup downloads the full SQLite database (products, changes, config, accounts, etc.). To restore, upload a previously downloaded backup file.',
-    'cfg.backup_warn': 'All current data will be replaced. This cannot be undone.',
-    'cfg.download_backup': '⬇️ Download Backup', 'cfg.restore_backup': '⬆️ Restore Backup',
-    'notify.title': 'Notification Channels', 'notify.desc': 'Enable and configure channels, click Save to apply, Test to verify', 'notify.save': 'Save Notify Config',
-    'cluster.local_info': 'Local Node Info', 'cluster.loading': 'Loading…',
-    'cluster.gen_share_code': '📋 Generate Share Code', 'cluster.gen_share_code_hint': 'Paste in another node to add without manual URL entry',
-    'cluster.share_code_label': 'Share Code (copy and paste in another node\'s "Paste Share Code" field)', 'cluster.copy': '📋 Copy',
-    'cluster.config_summary': '⚙️ Cluster Config (cluster_secret / node_role)',
-    'cluster.secret_label': 'Cluster Secret (leave blank to clear)', 'cluster.secret_ph': 'Same across all nodes',
-    'cluster.role_label': 'Node Role', 'cluster.master': 'Master', 'cluster.slave': 'Slave', 'cluster.save': '💾 Save',
-    'cluster.node_list': 'Cluster Node List', 'cluster.refresh_all': '🔄 Refresh All',
-    'cluster.node_list_desc': 'After registration, select a remote node in the top bar to proxy all operations there.',
-    'cluster.add_node': '➕ Add Node',
-    'cluster.add_node_desc': 'Enter the address of another HDY Monitor instance (must share the same cluster_secret in config.json).',
-    'cluster.server_addr': 'Server Address (with path prefix)', 'cluster.node_label': 'Label (optional)',
-    'cluster.node_label_ph': 'e.g. Node 2', 'cluster.one_click_add': '⚡ One-Click Add',
-    'cluster.paste_share_code': 'Paste Share Code (generated from another node\'s "Local Node Info", auto-decode and add)',
-    'cluster.decode_add': '📥 Decode & Add', 'cluster.bulk_import': '📦 Bulk Import (JSON Array)',
-    'cluster.bulk_add': '📦 Bulk Add', 'cluster.data_sync': 'Data Sync',
-    'cluster.push_all': '⬆️ Push All', 'cluster.data_sync_desc': 'Push products and change records from this node to target nodes (merge overwrite). A confirmation prompt will appear before push.',
-    'visitors.title': 'Visitor Account Management', 'visitors.desc': 'Visitors can log in at /visitor to browse products and configure their own notification channels.',
-    'visitors.create': '➕ Create Visitor Account', 'visitors.username_ph': 'Login username',
-    'visitors.password': 'Password', 'visitors.password_ph': 'Login password', 'visitors.create_btn': 'Create Account',
-    'prod.title': 'Product List', 'prod.per_page': 'Per page:',
-    'col.label': 'Label', 'col.username': 'Username', 'col.added_time': 'Added', 'col.created_time': 'Created',
-    'col.status': 'Status', 'col.node': 'Node', 'col.role': 'Role', 'col.version': 'Version', 'col.last_seen': 'Last Seen',
-  }
-};
-
-let _lang = localStorage.getItem('hdy_lang') || 'zh';
-
-function t(key) {
-  return (I18N[_lang] && I18N[_lang][key]) || (I18N['zh'][key]) || key;
-}
-
-function applyI18n() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    const val = t(key);
-    if (val) el.textContent = val;
-  });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-    const key = el.getAttribute('data-i18n-ph');
-    const val = t(key);
-    if (val) el.placeholder = val;
-  });
-  document.querySelectorAll('[data-i18n-title]').forEach(el => {
-    const key = el.getAttribute('data-i18n-title');
-    const val = t(key);
-    if (val) el.title = val;
-  });
-  const langBtn = document.getElementById('btn-lang');
-  if (langBtn) langBtn.textContent = _lang === 'zh' ? 'EN' : '中';
-}
-
-function toggleLang() {
-  _lang = _lang === 'zh' ? 'en' : 'zh';
-  localStorage.setItem('hdy_lang', _lang);
-  applyI18n();
-  // Re-render dynamic content that uses translated strings
-  if (document.getElementById('tab-products').classList.contains('active')) updatePriceSortHeader();
-  if (document.getElementById('tab-changes').classList.contains('active')) { /* tables re-render on next load */ }
-  const badge = document.getElementById('status-badge');
-  if (badge) {
-    const isRunning = badge.classList.contains('running');
-    badge.textContent = isRunning ? t('status.running') : t('status.stopped');
-  }
-  const pauseBtn = document.getElementById('btn-pause-notify');
-  if (pauseBtn && pauseBtn.style.display !== 'none') {
-    const isPaused = pauseBtn.style.background.includes('ffb300') || pauseBtn.textContent.includes('已暂停') || pauseBtn.textContent.includes('Paused');
-    pauseBtn.textContent = isPaused ? (t('btn.pause_notify').replace('暂停', '已暂停').replace('Pause', '🔕 Paused')) : t('btn.pause_notify');
-  }
-}
-
-// Apply theme and i18n on load
-applyI18n();
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -734,9 +503,9 @@ async function doLogin() {
       hideLogin();
       init();
     } else {
-      document.getElementById('login-err').textContent = _lang === 'en' ? 'Invalid username or password' : '账号或密码错误';
+      document.getElementById('login-err').textContent = '账号或密码错误';
     }
-  } catch (e) { document.getElementById('login-err').textContent = (_lang === 'en' ? 'Connection failed: ' : '连接失败: ') + e.message; }
+  } catch (e) { document.getElementById('login-err').textContent = '连接失败: ' + e.message; }
 }
 
 function showLogin() { document.getElementById('login-screen').classList.add('show'); }
@@ -788,34 +557,34 @@ async function pollStatus() {
     document.getElementById('s-changed').textContent = s.changed_count;
     document.getElementById('s-range').textContent = s.start_pid && s.end_pid ? s.start_pid + '–' + s.end_pid : '—';
     const badge = document.getElementById('status-badge');
-    badge.textContent = s.running ? t('status.running') : t('status.stopped');
+    badge.textContent = s.running ? '运行中' : '已停止';
     badge.className = s.running ? 'running' : '';
     document.getElementById('btn-start').style.display = s.running ? 'none' : '';
     document.getElementById('btn-stop').style.display = s.running ? '' : 'none';
     const pauseBtn = document.getElementById('btn-pause-notify');
     pauseBtn.style.display = s.running ? '' : 'none';
     if (s.notify_paused) {
-      pauseBtn.textContent = _lang === 'en' ? '🔕 Paused' : '🔕 已暂停推送';
+      pauseBtn.textContent = '🔕 已暂停推送';
       pauseBtn.style.background = 'var(--warn)'; pauseBtn.style.color = '#000';
     } else {
-      pauseBtn.textContent = t('btn.pause_notify');
-      pauseBtn.style.background = 'var(--btn-dark2)'; pauseBtn.style.color = 'var(--text)';
+      pauseBtn.textContent = '🔔 暂停推送';
+      pauseBtn.style.background = '#333'; pauseBtn.style.color = 'var(--text)';
     }
     const filterBtn = document.getElementById('btn-filter-sold-out');
     filterBtn.style.display = s.running ? '' : 'none';
     if (s.filter_sold_out) {
-      filterBtn.textContent = _lang === 'en' ? '🚫 Filtering' : '🚫 已过滤售罄';
+      filterBtn.textContent = '🚫 已过滤售罄';
       filterBtn.style.background = 'var(--warn)'; filterBtn.style.color = '#000';
     } else {
-      filterBtn.textContent = t('btn.filter_sold_out');
-      filterBtn.style.background = 'var(--btn-dark2)'; filterBtn.style.color = 'var(--text)';
+      filterBtn.textContent = '📦 过滤售罄';
+      filterBtn.style.background = '#333'; filterBtn.style.color = 'var(--text)';
     }
     if (s.running && s.start_pid && s.end_pid && s.current_pid) {
       const pct = Math.round((s.current_pid - s.start_pid) / (s.end_pid - s.start_pid + 1) * 100);
       document.getElementById('progress-bar').style.width = pct + '%';
       document.getElementById('progress-text').textContent = `PID ${s.current_pid} / ${s.end_pid}  (${pct}%)`;
     } else if (!s.running) {
-      document.getElementById('progress-text').textContent = t('dash.not_running');
+      document.getElementById('progress-text').textContent = '未运行';
     }
   } catch(e) {}
 }
@@ -833,25 +602,25 @@ async function loadDashChanges() {
 async function startCrawler() {
   const r = await api('POST', '/api/crawler/start');
   const d = await r.json();
-  toast(d.started ? (_lang === 'en' ? 'Crawler started' : '爬虫已启动') : (_lang === 'en' ? 'Crawler already running' : '爬虫已在运行'), d.started ? 'success' : '');
+  toast(d.started ? '爬虫已启动' : '爬虫已在运行', d.started ? 'success' : '');
   await pollStatus();
 }
 async function stopCrawler() {
   await api('POST', '/api/crawler/stop');
-  toast(_lang === 'en' ? 'Crawler stopped' : '爬虫已停止'); await pollStatus();
+  toast('爬虫已停止'); await pollStatus();
 }
 
 async function toggleNotifyPause() {
   const r = await api('POST', '/api/notify/toggle_pause');
   const d = await r.json();
-  toast(d.notify_paused ? (_lang === 'en' ? 'Notifications paused (auto-resume after round)' : '推送已暂停（本轮结束后自动恢复）') : (_lang === 'en' ? 'Notifications resumed' : '推送已恢复'), d.notify_paused ? '' : 'success');
+  toast(d.notify_paused ? '推送已暂停（本轮结束后自动恢复）' : '推送已恢复', d.notify_paused ? '' : 'success');
   await pollStatus();
 }
 
 async function toggleFilterSoldOut() {
   const r = await api('POST', '/api/notify/toggle_filter_sold_out');
   const d = await r.json();
-  toast(d.filter_sold_out ? (_lang === 'en' ? 'Filtering sold-out: no sold-out notifications' : '已开启过滤售罄：售罄消息不推送') : (_lang === 'en' ? 'Filter disabled: all notifications sent' : '已关闭过滤售罄：推送所有消息'), d.filter_sold_out ? '' : 'success');
+  toast(d.filter_sold_out ? '已开启过滤售罄：售罄消息不推送' : '已关闭过滤售罄：推送所有消息', d.filter_sold_out ? '' : 'success');
   await pollStatus();
 }
 
@@ -870,10 +639,9 @@ function prodPageSizeChange() { loadProducts(1); }
 function updatePriceSortHeader() {
   const el = document.getElementById('products-price-sort');
   if (!el) return;
-  const base = _lang === 'en' ? 'Price' : '价格';
-  if (_prodPriceSort === 'asc') el.textContent = base + ' ↑';
-  else if (_prodPriceSort === 'desc') el.textContent = base + ' ↓';
-  else el.textContent = base + ' ↕';
+  if (_prodPriceSort === 'asc') el.textContent = '价格 ↑';
+  else if (_prodPriceSort === 'desc') el.textContent = '价格 ↓';
+  else el.textContent = '价格 ↕';
 }
 
 function togglePriceSort() {
@@ -910,7 +678,7 @@ async function loadProductFilterOptions() {
     const opts = await r.json();
     const cycleSel = document.getElementById('filter-cycle');
     const curCycle = cycleSel.value;
-    cycleSel.innerHTML = `<option value="">${t('filter.all')}</option>` + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
+    cycleSel.innerHTML = '<option value="">全部</option>' + (opts.cycles || []).map(v => `<option value="${esc(v)}"${v===curCycle?' selected':''}>${esc(v)}</option>`).join('');
   } catch(e) {}
 }
 
@@ -945,7 +713,7 @@ async function loadProducts(page) {
       <td>${stockBadge(p.stock_status)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_checked_at)}</td>
       <td style="color:var(--muted);font-size:11px;">${fmtDate(p.last_changed_at)}</td>
-      <td><button class="btn btn-sm btn-secondary" onclick="showHistory(${esc(p.pid)})">${_lang === 'en' ? 'History' : '历史'}</button></td>
+      <td><button class="btn btn-sm" onclick="showHistory(${esc(p.pid)})" style="background:#222;color:var(--text)">历史</button></td>
     </tr>`).join('');
   renderProductPagination(data.total, data.page, data.page_size);
   await loadProductFilterOptions();
@@ -958,13 +726,13 @@ function renderProductPagination(total, page, pageSize) {
   el.innerHTML = '';
   const info = document.createElement('span');
   info.style.cssText = 'font-size:12px;color:var(--muted);margin-right:8px;';
-  info.textContent = _lang === 'en' ? `Total: ${total}, Page ${page}/${pages}` : `共 ${total} 条，第 ${page}/${pages} 页`;
+  info.textContent = `共 ${total} 条，第 ${page}/${pages} 页`;
   el.appendChild(info);
 
   function addBtn(label, targetPage, isCurrent) {
     const b = document.createElement('button');
     b.className = 'btn btn-sm' + (isCurrent ? ' btn-primary' : '');
-    b.style.background = isCurrent ? '' : 'var(--btn-dark)'; b.style.color = isCurrent ? '' : 'var(--text)';
+    b.style.background = isCurrent ? '' : '#222'; b.style.color = '#fff';
     b.textContent = label;
     b.disabled = isCurrent;
     b.onclick = () => loadProducts(targetPage);
@@ -981,9 +749,9 @@ function renderProductPagination(total, page, pageSize) {
 }
 
 function stockBadge(s) {
-  if (s === 'in_stock') return `<span class="badge badge-green">${t('stock.in')}</span>`;
-  if (s === 'out_of_stock') return `<span class="badge badge-red">${t('stock.out')}</span>`;
-  return `<span class="badge badge-gray">${t('stock.unknown')}</span>`;
+  if (s === 'in_stock') return '<span class="badge badge-green">有货</span>';
+  if (s === 'out_of_stock') return '<span class="badge badge-red">无货</span>';
+  return '<span class="badge badge-gray">未知</span>';
 }
 
 async function showHistory(pid) {
@@ -1006,10 +774,10 @@ async function loadChanges(page) {
 }
 
 async function clearChanges() {
-  if (!confirm(_lang === 'en' ? 'Delete all change records? This cannot be undone.' : '确定要清空所有抓取记录吗？此操作不可恢复。')) return;
+  if (!confirm('确定要清空所有抓取记录吗？此操作不可恢复。')) return;
   const r = await api('DELETE', '/api/changes');
   const d = await r.json().catch(() => ({}));
-  toast(r.ok ? (_lang === 'en' ? 'Records cleared' : '抓取记录已清空') : ((_lang === 'en' ? 'Failed: ' : '清空失败：') + (d.detail || d.message || r.status)), r.ok ? 'success' : 'error');
+  toast(r.ok ? '抓取记录已清空' : ('清空失败：' + (d.detail || d.message || r.status)), r.ok ? 'success' : 'error');
   if (r.ok) { _changesPage = 1; loadChanges(); loadDashChanges(); }
 }
 
@@ -1031,7 +799,7 @@ function renderPagination(total, page, pageSize) {
   for (let i = 1; i <= Math.min(pages, 20); i++) {
     const b = document.createElement('button');
     b.className = 'btn btn-sm' + (i === page ? ' btn-primary' : '');
-    b.style.background = i === page ? '' : 'var(--btn-dark)'; b.style.color = i === page ? '' : 'var(--text)';
+    b.style.background = i === page ? '' : '#222'; b.style.color = '#fff';
     b.textContent = i; b.onclick = () => loadChanges(i);
     el.appendChild(b);
   }
@@ -1064,7 +832,7 @@ async function loadConfig() {
   document.getElementById('cfg-notify-monthly-price-min').value = c.notify_monthly_price_min ?? '';
   document.getElementById('cfg-notify-monthly-price-max').value = c.notify_monthly_price_max ?? '';
   const cs = document.getElementById('cookie-status');
-  cs.textContent = c.has_token ? (_lang === 'en' ? '✅ Token saved' : '✅ Token 已保存') : (c.has_cookie ? (_lang === 'en' ? '✅ Cookie saved' : '✅ Cookie 已保存') : (_lang === 'en' ? '⚠️ Not logged in' : '⚠️ 未登录'));
+  cs.textContent = c.has_token ? '✅ Token 已保存' : (c.has_cookie ? '✅ Cookie 已保存' : '⚠️ 未登录');
   cs.style.color = (c.has_token || c.has_cookie) ? 'var(--success)' : 'var(--warn)';
   await loadSiteAccounts();
 }
@@ -1074,9 +842,9 @@ async function saveSiteTitle() {
   const r = await api('PUT', '/api/config', { site_title: title });
   if (r.ok) {
     _applySiteTitle(title);
-    toast(_lang === 'en' ? 'Site title saved' : '站点标题已保存', 'success');
+    toast('站点标题已保存', 'success');
   } else {
-    toast(_lang === 'en' ? 'Save failed' : '保存失败', 'error');
+    toast('保存失败', 'error');
   }
 }
 
@@ -1085,7 +853,7 @@ async function saveConfig() {
   const endPid = parseInt(document.getElementById('cfg-end').value);
   const intervalMs = parseInt(document.getElementById('cfg-interval').value);
   if ([startPid, endPid, intervalMs].some(v => Number.isNaN(v))) {
-    return toast(_lang === 'en' ? 'Please enter valid PID and interval numbers' : '请填写有效的 PID 与间隔数字', 'error');
+    return toast('请填写有效的 PID 与间隔数字', 'error');
   }
   const body = {
     start_pid: startPid,
@@ -1109,31 +877,31 @@ async function saveConfig() {
     if (val === '') return null;
     const num = parseFloat(val);
     if (!Number.isFinite(num)) {
-      toast(_lang === 'en' ? `${label} must be a valid number` : `${label}必须是有效数字`, 'error');
+      toast(`${label}必须是有效数字`, 'error');
       return undefined;
     }
     if (num < 0) {
-      toast(_lang === 'en' ? `${label} cannot be negative` : `${label}不能为负数`, 'error');
+      toast(`${label}不能为负数`, 'error');
       return undefined;
     }
     return num;
   };
-  body.notify_price_min = parseOptionalNumber(notifyPriceMin, _lang === 'en' ? 'Notify Min Price' : '通知最低价');
-  body.notify_price_max = parseOptionalNumber(notifyPriceMax, _lang === 'en' ? 'Notify Max Price' : '通知最高价');
-  body.notify_monthly_price_min = parseOptionalNumber(notifyMonthlyPriceMin, _lang === 'en' ? 'Monthly Min Price' : '月租最低价');
-  body.notify_monthly_price_max = parseOptionalNumber(notifyMonthlyPriceMax, _lang === 'en' ? 'Monthly Max Price' : '月租最高价');
+  body.notify_price_min = parseOptionalNumber(notifyPriceMin, '通知最低价');
+  body.notify_price_max = parseOptionalNumber(notifyPriceMax, '通知最高价');
+  body.notify_monthly_price_min = parseOptionalNumber(notifyMonthlyPriceMin, '月租最低价');
+  body.notify_monthly_price_max = parseOptionalNumber(notifyMonthlyPriceMax, '月租最高价');
   if ([body.notify_price_min, body.notify_price_max, body.notify_monthly_price_min, body.notify_monthly_price_max].some(v => v === undefined)) {
     return;
   }
   const r = await api('PUT', '/api/config', body);
-  toast(r.ok ? (_lang === 'en' ? 'Config saved' : '配置已保存') : (_lang === 'en' ? 'Save failed' : '保存失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? '配置已保存' : '保存失败', r.ok ? 'success' : 'error');
 }
 
 async function addSiteAccount() {
   const label = document.getElementById('site-label').value.trim();
   const u = document.getElementById('site-user').value.trim();
   const apiKey = document.getElementById('site-apikey').value.trim();
-  if (!u || !apiKey) return toast(_lang === 'en' ? 'Please enter username and API Key' : '请输入账号和 API Key', 'error');
+  if (!u || !apiKey) return toast('请输入账号和 API Key', 'error');
   const r = await api('POST', '/api/site_accounts', { label, username: u, api_key: apiKey });
   const d = await r.json();
   toast(d.message, r.ok ? 'success' : 'error');
@@ -1152,21 +920,20 @@ async function loadSiteAccounts() {
   const el = document.getElementById('site-accounts-list');
   if (!el) return;
   if (!accounts || accounts.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">' + (_lang === 'en' ? 'No accounts saved.' : '暂无保存的账号') + '</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无保存的账号</p>';
     return;
   }
-  const thLabels = [t('col.label'), t('col.username'), t('col.added_time'), t('col.status'), t('col.action')];
   el.innerHTML = `<table style="width:100%;margin-bottom:8px;">
-    <thead><tr>${thLabels.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <thead><tr><th>备注</th><th>账号</th><th>添加时间</th><th>状态</th><th>操作</th></tr></thead>
     <tbody>${accounts.map(a => `
       <tr>
         <td>${esc(a.label) || '—'}</td>
         <td>${esc(a.username)}</td>
         <td style="font-size:11px;color:var(--muted);">${a.created_at ? fmtDate(a.created_at) : '—'}</td>
-        <td>${a.is_active ? `<span class="badge badge-green">${_lang==='en'?'Active':'使用中'}</span>` : `<span class="badge badge-gray">${_lang==='en'?'Inactive':'未启用'}</span>`}</td>
+        <td>${a.is_active ? '<span class="badge badge-green">使用中</span>' : '<span class="badge badge-gray">未启用</span>'}</td>
         <td style="display:flex;gap:6px;">
-          ${!a.is_active ? `<button class="btn btn-sm btn-success" onclick="activateSiteAccount(${parseInt(a.id)})">${_lang==='en'?'Activate':'启用'}</button>` : ''}
-          <button class="btn btn-sm btn-danger" onclick="deleteSiteAccount(${parseInt(a.id)})">${_lang==='en'?'Delete':'删除'}</button>
+          ${!a.is_active ? `<button class="btn btn-sm btn-success" onclick="activateSiteAccount(${parseInt(a.id)})">启用</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deleteSiteAccount(${parseInt(a.id)})">删除</button>
         </td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -1175,37 +942,37 @@ async function loadSiteAccounts() {
 async function activateSiteAccount(id) {
   const r = await api('POST', `/api/site_accounts/${id}/activate`);
   const d = await r.json();
-  toast(d.message || (r.ok ? (_lang === 'en' ? 'Switched' : '已切换') : (_lang === 'en' ? 'Failed' : '操作失败')), r.ok ? 'success' : 'error');
+  toast(d.message || (r.ok ? '已切换' : '操作失败'), r.ok ? 'success' : 'error');
   if (r.ok) loadSiteAccounts();
 }
 
 async function deleteSiteAccount(id) {
-  if (!confirm(_lang === 'en' ? 'Delete this account?' : '确定删除该账号？')) return;
+  if (!confirm('确定删除该账号？')) return;
   const r = await api('DELETE', `/api/site_accounts/${id}`);
-  toast(r.ok ? (_lang === 'en' ? 'Account deleted' : '账号已删除') : (_lang === 'en' ? 'Delete failed' : '删除失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? '账号已删除' : '删除失败', r.ok ? 'success' : 'error');
   if (r.ok) loadSiteAccounts();
 }
 
 async function saveManualCookie() {
   const cookie = document.getElementById('manual-cookie').value.trim();
-  if (!cookie) return toast(_lang === 'en' ? 'Please enter a cookie string' : '请输入 Cookie 字符串', 'error');
+  if (!cookie) return toast('请输入 Cookie 字符串', 'error');
   const r = await api('PUT', '/api/config', { login_cookie: cookie });
-  toast(r.ok ? (_lang === 'en' ? 'Cookie saved' : 'Cookie 已保存') : (_lang === 'en' ? 'Save failed' : '保存失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? 'Cookie 已保存' : '保存失败', r.ok ? 'success' : 'error');
   if (r.ok) loadConfig();
 }
 
 // ── Notify config ─────────────────────────────────────────────────────────
 const CHANNELS = [
-  { key: 'telegram', name: 'Telegram Bot', name_en: 'Telegram Bot', fields: [['bot_token','Bot Token'],['chat_id','Chat ID']] },
-  { key: 'wecom', name: '企业微信机器人', name_en: 'WeCom Bot', fields: [['webhook_url','Webhook URL']] },
-  { key: 'dingtalk', name: '钉钉机器人', name_en: 'DingTalk Bot', fields: [['webhook_url','Webhook URL'],['secret','加签 Secret (可选)']] },
-  { key: 'feishu', name: '飞书机器人', name_en: 'Feishu Bot', fields: [['webhook_url','Webhook URL']] },
-  { key: 'serverchan', name: 'Server酱 (微信)', name_en: 'ServerChan (WeChat)', fields: [['sendkey','SendKey']] },
-  { key: 'bark', name: 'Bark (iOS)', name_en: 'Bark (iOS)', fields: [['device_key','Device Key']] },
-  { key: 'pushplus', name: 'PushPlus', name_en: 'PushPlus', fields: [['token','Token']] },
-  { key: 'discord', name: 'Discord Webhook', name_en: 'Discord Webhook', fields: [['webhook_url','Webhook URL']] },
-  { key: 'email', name: 'SMTP 邮件', name_en: 'SMTP Email', fields: [['host','服务器/Server'],['port','端口/Port'],['user','账号/User'],['password','密码/Password'],['to','收件人/To'],['use_tls','TLS(true/false)']] },
-  { key: 'webhook', name: '自定义 Webhook', name_en: 'Custom Webhook', fields: [['url','URL'],['method','方法/Method(POST)'],['headers','Headers(JSON)'],['payload','Payload(JSON,{{title}},{{body}})']] },
+  { key: 'telegram', name: 'Telegram Bot', fields: [['bot_token','Bot Token'],['chat_id','Chat ID']] },
+  { key: 'wecom', name: '企业微信机器人', fields: [['webhook_url','Webhook URL']] },
+  { key: 'dingtalk', name: '钉钉机器人', fields: [['webhook_url','Webhook URL'],['secret','加签 Secret (可选)']] },
+  { key: 'feishu', name: '飞书机器人', fields: [['webhook_url','Webhook URL']] },
+  { key: 'serverchan', name: 'Server酱 (微信)', fields: [['sendkey','SendKey']] },
+  { key: 'bark', name: 'Bark (iOS)', fields: [['device_key','Device Key']] },
+  { key: 'pushplus', name: 'PushPlus', fields: [['token','Token']] },
+  { key: 'discord', name: 'Discord Webhook', fields: [['webhook_url','Webhook URL']] },
+  { key: 'email', name: 'SMTP 邮件', fields: [['host','服务器'],['port','端口'],['user','账号'],['password','密码'],['to','收件人'],['use_tls','TLS(true/false)']] },
+  { key: 'webhook', name: '自定义 Webhook', fields: [['url','URL'],['method','方法(POST)'],['headers','Headers(JSON)'],['payload','Payload(JSON,{{title}},{{body}})']] },
 ];
 
 let _notifyCfg = {};
@@ -1232,9 +999,9 @@ function renderNotifyChannels() {
       <div class="channel-block">
         <h3>
           <div class="toggle ${enabled ? 'on' : ''}" id="tog-${ch.key}" onclick="toggleChannel('${ch.key}')"></div>
-          ${_lang === 'en' ? ch.name_en : ch.name}
-          <button class="btn btn-sm btn-secondary" style="margin-left:auto;"
-            onclick="testChannel('${ch.key}')">${_lang === 'en' ? 'Test' : '测试'}</button>
+          ${ch.name}
+          <button class="btn btn-sm" style="margin-left:auto;background:#222;color:var(--text);"
+            onclick="testChannel('${ch.key}')">测试</button>
         </h3>
         <div class="form-row">${fields}</div>
       </div>`;
@@ -1263,7 +1030,7 @@ function collectNotifyConfig() {
 async function saveNotifyConfig() {
   const nc = collectNotifyConfig();
   const r = await api('PUT', '/api/config', { notify_channels: nc });
-  toast(r.ok ? (_lang === 'en' ? 'Notification config saved' : '通知配置已保存') : (_lang === 'en' ? 'Save failed' : '保存失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? '通知配置已保存' : '保存失败', r.ok ? 'success' : 'error');
   if (r.ok) _notifyCfg = nc;
 }
 
@@ -1272,7 +1039,7 @@ async function testChannel(key) {
   const cfg = nc[key] || {};
   const r = await api('POST', '/api/notify/test', { channel: key, config: cfg });
   const d = await r.json();
-  toast(d.success ? `${key} ${_lang==='en'?'sent ✓':'发送成功 ✓'}` : `${key} ${_lang==='en'?'failed ✗':'发送失败 ✗'}`, d.success ? 'success' : 'error');
+  toast(d.success ? `${key} 发送成功 ✓` : `${key} 发送失败 ✗`, d.success ? 'success' : 'error');
 }
 
 // ── Backup & Restore ──────────────────────────────────────────────────────
@@ -1283,7 +1050,7 @@ function downloadBackup() {
   // Pass auth token via URL query since <a> download doesn't send headers.
   // Instead, fetch the blob and trigger download.
   api('GET', '/api/backup').then(async r => {
-    if (!r.ok) { toast(_lang === 'en' ? 'Backup download failed' : '备份下载失败', 'error'); return; }
+    if (!r.ok) { toast('备份下载失败', 'error'); return; }
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1293,19 +1060,19 @@ function downloadBackup() {
     link.download = `hdy_backup_${ts}.db`;
     link.click();
     URL.revokeObjectURL(url);
-    toast(_lang === 'en' ? 'Backup downloaded' : '备份已下载', 'success');
-  }).catch(e => toast((_lang === 'en' ? 'Backup failed: ' : '备份下载失败: ') + e.message, 'error'));
+    toast('备份已下载', 'success');
+  }).catch(e => toast('备份下载失败: ' + e.message, 'error'));
 }
 
 async function uploadRestore(input) {
   const file = input.files[0];
   if (!file) return;
   const status = document.getElementById('restore-status');
-  if (!confirm(_lang === 'en' ? `Restore backup "${file.name}"? All current data will be replaced. This cannot be undone!` : `确定要恢复备份「${file.name}」吗？当前所有数据将被替换，操作不可撤销！`)) {
+  if (!confirm(`确定要恢复备份「${file.name}」吗？当前所有数据将被替换，操作不可撤销！`)) {
     input.value = '';
     return;
   }
-  status.textContent = _lang === 'en' ? 'Uploading and restoring...' : '正在上传并恢复...';
+  status.textContent = '正在上传并恢复...';
   const formData = new FormData();
   formData.append('file', file);
   try {
@@ -1316,18 +1083,18 @@ async function uploadRestore(input) {
     });
     const d = await r.json().catch(() => ({}));
     if (r.ok) {
-      status.textContent = '✅ ' + (d.message || (_lang === 'en' ? 'Restore successful' : '恢复成功'));
+      status.textContent = '✅ ' + (d.message || '恢复成功');
       status.style.color = 'var(--success)';
-      toast(_lang === 'en' ? 'Database restored, please refresh' : '数据库已恢复，请刷新页面', 'success');
+      toast('数据库已恢复，请刷新页面', 'success');
     } else {
-      status.textContent = '❌ ' + (d.detail || d.message || (_lang === 'en' ? 'Restore failed' : '恢复失败'));
+      status.textContent = '❌ ' + (d.detail || d.message || '恢复失败');
       status.style.color = 'var(--danger)';
-      toast((_lang === 'en' ? 'Restore failed: ' : '恢复失败: ') + (d.detail || d.message || r.status), 'error');
+      toast('恢复失败: ' + (d.detail || d.message || r.status), 'error');
     }
   } catch (e) {
     status.textContent = '❌ ' + e.message;
     status.style.color = 'var(--danger)';
-    toast((_lang === 'en' ? 'Restore failed: ' : '恢复失败: ') + e.message, 'error');
+    toast('恢复失败: ' + e.message, 'error');
   }
   input.value = '';
 }
@@ -1335,12 +1102,12 @@ async function uploadRestore(input) {
 // ── Cluster management ────────────────────────────────────────────────────
 
 function nodeStatusBadge(n) {
-  if (n.status === 'online') return `<span class="badge badge-green">${_lang==='en'?'Online':'在线'}</span>`;
+  if (n.status === 'online') return '<span class="badge badge-green">在线</span>';
   const msg = n.error_message ? esc(n.error_message) : '';
   const tip = msg ? ` title="${msg}"` : '';
-  if (n.status === 'error') return `<span class="badge badge-red" style="cursor:default;"${tip}>${_lang==='en'?'Error':'错误'}${msg ? ' ℹ️' : ''}</span>`;
-  if (n.status === 'unreachable') return `<span class="badge badge-red" style="cursor:default;"${tip}>${_lang==='en'?'Unreachable':'不可达'}${msg ? ' ℹ️' : ''}</span>`;
-  return `<span class="badge badge-gray">${_lang==='en'?'Unknown':'未知'}</span>`;
+  if (n.status === 'error') return `<span class="badge badge-red" style="cursor:default;"${tip}>错误${msg ? ' ℹ️' : ''}</span>`;
+  if (n.status === 'unreachable') return `<span class="badge badge-red" style="cursor:default;"${tip}>不可达${msg ? ' ℹ️' : ''}</span>`;
+  return '<span class="badge badge-gray">未知</span>';
 }
 
 let _clusterRefreshTimer = null;
@@ -1353,8 +1120,8 @@ async function loadCluster() {
       const c = await r.json();
       _localConfig = c;
       document.getElementById('cluster-local-info').innerHTML =
-        `<p>${_lang==='en'?'Node Role':'节点角色'}: <strong style="color:var(--accent2)">${esc(c.node_role || 'master')}</strong>
-         &nbsp;|&nbsp; ${_lang==='en'?'Cluster Secret':'集群密钥'}: <strong style="color:${c.has_cluster_secret ? 'var(--success)' : 'var(--warn)'}">${c.has_cluster_secret ? (_lang==='en'?'✅ Configured':'✅ 已配置') : (_lang==='en'?'⚠️ Not set':'⚠️ 未配置')}</strong></p>`;
+        `<p>节点角色: <strong style="color:var(--accent2)">${esc(c.node_role || 'master')}</strong>
+         &nbsp;|&nbsp; 集群密钥: <strong style="color:${c.has_cluster_secret ? 'var(--success)' : 'var(--warn)'}">${c.has_cluster_secret ? '✅ 已配置' : '⚠️ 未配置'}</strong></p>`;
       // Prefill cluster config form with current role
       const roleEl = document.getElementById('cfg-node-role');
       if (roleEl && c.node_role) roleEl.value = c.node_role;
@@ -1377,26 +1144,25 @@ function renderNodes() {
   const el = document.getElementById('nodes-list');
   if (!el) return;
   if (!_nodes || _nodes.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">' + (_lang==='en'?'No nodes registered. Add the first node to build your cluster.':'暂无注册节点。添加第一个节点开始构建集群。') + '</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无注册节点。添加第一个节点开始构建集群。</p>';
     return;
   }
-  const thLabels = [t('col.node'), t('col.role'), t('col.status'), t('col.version'), t('col.last_seen'), t('col.action')];
   el.innerHTML = `<table style="width:100%;">
-    <thead><tr>${thLabels.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <thead><tr><th>节点</th><th>角色</th><th>状态</th><th>版本</th><th>最后在线</th><th>操作</th></tr></thead>
     <tbody>${_nodes.map(n => `
       <tr data-node-id="${parseInt(n.id)}">
         <td>
           <div style="font-weight:500;">${esc(n.label) || '—'}</div>
           <div style="font-size:11px;color:var(--accent2);word-break:break-all;">${esc(n.url)}</div>
         </td>
-        <td><span class="badge badge-blue">${_lang==='en'?(n.role==='master'?'Master':'Slave'):(n.role==='master'?'主节点':'从节点')}</span></td>
+        <td><span class="badge badge-blue">${esc(n.role === 'master' ? '主节点' : '从节点')}</span></td>
         <td>${nodeStatusBadge(n)}</td>
         <td style="font-size:11px;color:var(--muted);">${esc(n.version) || '—'}</td>
         <td style="font-size:11px;color:var(--muted);">${n.last_seen_at ? fmtDate(n.last_seen_at) : '—'}</td>
         <td>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
             <button class="btn btn-sm btn-primary" onclick="pingNode(${parseInt(n.id)})">🔄 Ping</button>
-            <button class="btn btn-sm btn-danger" onclick="removeNode(${parseInt(n.id)})">${_lang==='en'?'Delete':'删除'}</button>
+            <button class="btn btn-sm btn-danger" onclick="removeNode(${parseInt(n.id)})">删除</button>
           </div>
         </td>
       </tr>`).join('')}
@@ -1415,13 +1181,15 @@ function renderNodeSwitcher() {
   const localActive = _proxyNodeId === null;
   if (banner) banner.style.display = localActive ? 'none' : 'inline';
   buttons.innerHTML =
-    `<button class="btn btn-sm ${localActive ? 'btn-primary' : 'btn-secondary2'}"
-             onclick="switchNode(null)">
-       🖥️ ${_lang==='en'?'Local Node':'本节点'}
+    `<button class="btn btn-sm ${localActive ? 'btn-primary' : ''}"
+             onclick="switchNode(null)"
+             style="${localActive ? '' : 'background:#333;color:var(--text);'}">
+       🖥️ 本节点
      </button>` +
     _nodes.map(n =>
-      `<button class="btn btn-sm ${_proxyNodeId === n.id ? 'btn-primary' : 'btn-secondary2'}"
-               onclick="switchNode(${n.id})">
+      `<button class="btn btn-sm ${_proxyNodeId === n.id ? 'btn-primary' : ''}"
+               onclick="switchNode(${n.id})"
+               style="${_proxyNodeId === n.id ? '' : 'background:#333;color:var(--text);'}">
          ${n.status === 'online' ? '🟢' : '🔴'} ${esc(n.label || n.url)}
        </button>`
     ).join('');
@@ -1432,7 +1200,7 @@ function renderSyncButtons() {
   const allBtn = document.getElementById('push-all-btn');
   if (!el) return;
   if (!_nodes || _nodes.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">' + (_lang==='en'?'Please add a node first.':'请先添加节点') + '</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">请先添加节点</p>';
     if (allBtn) allBtn.style.display = 'none';
     return;
   }
@@ -1440,7 +1208,7 @@ function renderSyncButtons() {
   el.innerHTML = _nodes.map(n =>
     `<button class="btn btn-sm btn-warn"
              onclick="pushSyncToNode(${parseInt(n.id)}, this)">
-       ⬆️ ${_lang==='en'?'Push to':'推送到'}「${esc(n.label || n.url)}」
+       ⬆️ 推送到「${esc(n.label || n.url)}」
      </button>`
   ).join('');
 }
@@ -1454,7 +1222,7 @@ function switchNode(nodeId) {
   if (activeTab && activeBtn && activeTab.id !== 'tab-cluster') {
     showTab(activeTab.id, activeBtn);
   }
-  toast(nodeId === null ? (_lang==='en'?'Switched to local node':'已切换到本节点') : (_lang==='en'?'Switched to remote node (proxy mode)':'已切换到远程节点：代理模式'), 'success');
+  toast(nodeId === null ? '已切换到本节点' : '已切换到远程节点：代理模式', 'success');
 }
 
 async function pingNode(nodeId) {
@@ -1482,9 +1250,9 @@ async function pingNode(nodeId) {
     }
 
     if (d.status === 'ok') {
-      toast(_lang==='en'?'Node online ✓':'节点在线 ✓', 'success');
+      toast('节点在线 ✓', 'success');
     } else {
-      toast((_lang==='en'?'Node unreachable: ':'节点不可达: ') + (d.message || d.status || ''), 'error');
+      toast('节点不可达: ' + (d.message || d.status || ''), 'error');
     }
   } finally {
     if (pingBtn) { pingBtn.disabled = false; pingBtn.textContent = '🔄 Ping'; }
@@ -1498,12 +1266,12 @@ async function pingAllNodes() {
 }
 
 async function removeNode(nodeId) {
-  if (!confirm(_lang === 'en' ? 'Delete this node?' : '确定删除该节点？')) return;
+  if (!confirm('确定删除该节点？')) return;
   const r = await fetch(BASE + '/api/nodes/' + nodeId, {
     method: 'DELETE',
     headers: { 'Authorization': 'Bearer ' + _token },
   });
-  toast(r.ok ? (_lang === 'en' ? 'Node deleted' : '节点已删除') : (_lang === 'en' ? 'Delete failed' : '删除失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? '节点已删除' : '删除失败', r.ok ? 'success' : 'error');
   if (r.ok) {
     if (_proxyNodeId === nodeId) switchNode(null);
     loadCluster();
@@ -1513,7 +1281,7 @@ async function removeNode(nodeId) {
 async function addNode() {
   const url = document.getElementById('node-url').value.trim();
   const statusEl = document.getElementById('add-node-status');
-  if (!url) { toast(_lang === 'en' ? 'Please enter server address' : '请输入服务器地址', 'error'); return; }
+  if (!url) { toast('请输入服务器地址', 'error'); return; }
 
   // Auto-generate label from URL when not manually specified
   let label = document.getElementById('node-label').value.trim();
@@ -1525,7 +1293,7 @@ async function addNode() {
   }
 
   const role = document.getElementById('node-role').value;
-  statusEl.textContent = _lang === 'en' ? 'Verifying…' : '验证中…'; statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = '验证中…'; statusEl.style.color = 'var(--muted)';
   const body = { label, url, role };
   const r = await fetch(BASE + '/api/nodes', {
     method: 'POST',
@@ -1534,13 +1302,13 @@ async function addNode() {
   });
   const d = await r.json().catch(() => ({}));
   if (r.ok) {
-    statusEl.textContent = d.message || (_lang === 'en' ? 'Added' : '已添加');
+    statusEl.textContent = d.message || '已添加';
     statusEl.style.color = d.connectivity === 'online' ? 'var(--success)' : 'var(--warn)';
     document.getElementById('node-url').value = '';
     document.getElementById('node-label').value = '';
     loadCluster();
   } else {
-    statusEl.textContent = d.detail || d.message || (_lang === 'en' ? 'Add failed' : '添加失败');
+    statusEl.textContent = d.detail || d.message || '添加失败';
     statusEl.style.color = 'var(--danger)';
   }
 }
@@ -1564,24 +1332,24 @@ function genShareCode() {
 function copyShareCode() {
   const input = document.getElementById('share-code-output');
   navigator.clipboard.writeText(input.value)
-    .then(() => toast(_lang === 'en' ? 'Share code copied' : '分享码已复制', 'success'))
-    .catch(() => { input.select(); document.execCommand('copy'); toast(_lang === 'en' ? 'Share code copied' : '分享码已复制', 'success'); });
+    .then(() => toast('分享码已复制', 'success'))
+    .catch(() => { input.select(); document.execCommand('copy'); toast('分享码已复制', 'success'); });
 }
 
 async function applyShareCode() {
   const code = document.getElementById('node-share-code').value.trim();
   const statusEl = document.getElementById('share-add-status');
-  if (!code) { toast(_lang === 'en' ? 'Please paste a share code' : '请粘贴分享码', 'error'); return; }
+  if (!code) { toast('请粘贴分享码', 'error'); return; }
   let obj;
   try {
     obj = JSON.parse(decodeURIComponent(atob(code).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
     if (!obj.url) throw new Error('missing url');
   } catch(e) {
-    toast(_lang === 'en' ? 'Invalid share code format' : '分享码格式无效', 'error');
+    toast('分享码格式无效', 'error');
     return;
   }
   // Auto-add immediately (one-step)
-  statusEl.textContent = _lang === 'en' ? 'Verifying…' : '验证中…'; statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = '验证中…'; statusEl.style.color = 'var(--muted)';
   let label = obj.label || '';
   if (!label) {
     try { const u = new URL(obj.url); label = u.hostname + (u.port ? ':' + u.port : ''); } catch(e) { label = obj.url; }
@@ -1593,12 +1361,12 @@ async function applyShareCode() {
   });
   const d = await r.json().catch(() => ({}));
   if (r.ok) {
-    statusEl.textContent = d.message || (_lang === 'en' ? 'Node added' : '节点已添加');
+    statusEl.textContent = d.message || '节点已添加';
     statusEl.style.color = d.connectivity === 'online' ? 'var(--success)' : 'var(--warn)';
     document.getElementById('node-share-code').value = '';
     loadCluster();
   } else {
-    statusEl.textContent = d.detail || d.message || (_lang === 'en' ? 'Add failed' : '添加失败');
+    statusEl.textContent = d.detail || d.message || '添加失败';
     statusEl.style.color = 'var(--danger)';
   }
 }
@@ -1613,10 +1381,10 @@ async function bulkAddNodes() {
     nodes = JSON.parse(jsonText);
     if (!Array.isArray(nodes) || nodes.length === 0) throw new Error();
   } catch(e) {
-    toast(_lang === 'en' ? 'Invalid JSON format, must be a non-empty array' : 'JSON 格式错误，需为非空数组', 'error');
+    toast('JSON 格式错误，需为非空数组', 'error');
     return;
   }
-  statusEl.textContent = _lang === 'en' ? `Adding ${nodes.length} nodes…` : `正在添加 ${nodes.length} 个节点…`;
+  statusEl.textContent = `正在添加 ${nodes.length} 个节点…`;
   statusEl.style.color = 'var(--muted)';
   let ok = 0, fail = 0;
   for (const n of nodes) {
@@ -1636,17 +1404,17 @@ async function bulkAddNodes() {
       r.ok ? ok++ : fail++;
     } catch(e) { fail++; }
   }
-  statusEl.textContent = _lang === 'en' ? `Done: ${ok} succeeded, ${fail} failed` : `完成：成功 ${ok}，失败 ${fail}`;
+  statusEl.textContent = `完成：成功 ${ok}，失败 ${fail}`;
   statusEl.style.color = fail > 0 ? 'var(--warn)' : 'var(--success)';
   loadCluster();
 }
 
 async function pushSyncToNode(nodeId, btn) {
   const node = _nodes.find(n => n.id === nodeId);
-  const label = node ? (node.label || node.url) : (_lang === 'en' ? `Node ${nodeId}` : `节点 ${nodeId}`);
-  if (!confirm(_lang === 'en' ? `Push products and change records to "${label}"?\nExisting data on target node will be merged/overwritten.` : `确定将本节点的产品和变化记录推送到「${label}」？\n目标节点的同名数据将被覆盖合并。`)) return;
+  const label = node ? (node.label || node.url) : `节点 ${nodeId}`;
+  if (!confirm(`确定将本节点的产品和变化记录推送到「${label}」？\n目标节点的同名数据将被覆盖合并。`)) return;
   const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = _lang === 'en' ? '⏳ Syncing…' : '⏳ 同步中…';
+  btn.disabled = true; btn.textContent = '⏳ 同步中…';
   const r = await fetch(BASE + '/api/nodes/' + nodeId + '/push_sync', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
@@ -1654,16 +1422,16 @@ async function pushSyncToNode(nodeId, btn) {
   btn.disabled = false; btn.textContent = origText;
   const d = await r.json().catch(() => ({}));
   if (r.ok) {
-    toast(_lang === 'en' ? `Push success: ${d.products_received} products, ${d.changes_received} changes` : `推送成功：产品 ${d.products_received}，变化记录 ${d.changes_received}`, 'success');
+    toast(`推送成功：产品 ${d.products_received}，变化记录 ${d.changes_received}`, 'success');
   } else {
-    toast((_lang === 'en' ? 'Push failed: ' : '推送失败: ') + (d.detail || d.message || r.status), 'error');
+    toast('推送失败: ' + (d.detail || d.message || r.status), 'error');
   }
 }
 
 async function pushSyncAll(btn) {
-  if (!confirm(_lang === 'en' ? `Push to all ${(_nodes || []).length} nodes? Existing data on target nodes will be merged/overwritten.` : `确定将本节点的产品和变化记录推送到全部 ${(_nodes || []).length} 个节点？\n目标节点的同名数据将被覆盖合并。`)) return;
+  if (!confirm(`确定将本节点的产品和变化记录推送到全部 ${(_nodes || []).length} 个节点？\n目标节点的同名数据将被覆盖合并。`)) return;
   const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = _lang === 'en' ? '⏳ Pushing…' : '⏳ 推送中…';
+  btn.disabled = true; btn.textContent = '⏳ 推送中…';
   try {
     const r = await fetch(BASE + '/api/nodes/push_sync_all', {
       method: 'POST',
@@ -1671,9 +1439,9 @@ async function pushSyncAll(btn) {
     });
     const d = await r.json().catch(() => ({}));
     if (r.ok) {
-      toast(_lang === 'en' ? `Push complete: ${d.ok_count}/${d.total} nodes succeeded` : `全量推送完成：成功 ${d.ok_count}/${d.total} 个节点`, d.ok_count === d.total ? 'success' : 'warn');
+      toast(`全量推送完成：成功 ${d.ok_count}/${d.total} 个节点`, d.ok_count === d.total ? 'success' : 'warn');
     } else {
-      toast((_lang === 'en' ? 'Push failed: ' : '全量推送失败: ') + (d.detail || d.message || r.status), 'error');
+      toast('全量推送失败: ' + (d.detail || d.message || r.status), 'error');
     }
   } finally {
     btn.disabled = false; btn.textContent = origText;
@@ -1687,7 +1455,7 @@ async function saveClusterConfig() {
   const body = {};
   if (secretEl.value !== '') body.cluster_secret = secretEl.value;
   body.node_role = roleEl.value;
-  statusEl.textContent = _lang === 'en' ? 'Saving…' : '保存中…'; statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = '保存中…'; statusEl.style.color = 'var(--muted)';
   try {
     const r = await fetch(BASE + '/api/cluster/config', {
       method: 'PUT',
@@ -1696,17 +1464,17 @@ async function saveClusterConfig() {
     });
     const d = await r.json().catch(() => ({}));
     if (r.ok) {
-      statusEl.textContent = d.message || (_lang === 'en' ? 'Saved' : '已保存');
+      statusEl.textContent = d.message || '已保存';
       statusEl.style.color = 'var(--success)';
       secretEl.value = '';
       loadCluster();
     } else {
-      statusEl.textContent = d.detail || d.message || (_lang === 'en' ? 'Save failed' : '保存失败');
+      statusEl.textContent = d.detail || d.message || '保存失败';
       statusEl.style.color = 'var(--danger)';
       secretEl.value = '';
     }
   } catch(e) {
-    statusEl.textContent = _lang === 'en' ? 'Request failed' : '请求失败';
+    statusEl.textContent = '请求失败';
     statusEl.style.color = 'var(--danger)';
     secretEl.value = '';
   }
@@ -1720,21 +1488,20 @@ async function loadVisitors() {
   const el = document.getElementById('visitor-list');
   if (!el) return;
   if (!visitors || visitors.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">' + (_lang==='en'?'No visitor accounts.':'暂无访客账号') + '</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">暂无访客账号</p>';
     return;
   }
-  const thLabels = [t('col.label'), t('col.username'), t('col.created_time'), t('col.status'), t('col.action')];
   el.innerHTML = `<table style="width:100%;margin-bottom:8px;">
-    <thead><tr>${thLabels.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <thead><tr><th>备注</th><th>账号</th><th>创建时间</th><th>状态</th><th>操作</th></tr></thead>
     <tbody>${visitors.map(v => `
       <tr>
         <td>${esc(v.label) || '—'}</td>
         <td>${esc(v.username)}</td>
         <td style="font-size:11px;color:var(--muted);">${v.created_at ? fmtDate(v.created_at) : '—'}</td>
-        <td>${v.is_active ? `<span class="badge badge-green">${_lang==='en'?'Enabled':'启用'}</span>` : `<span class="badge badge-gray">${_lang==='en'?'Disabled':'禁用'}</span>`}</td>
+        <td>${v.is_active ? '<span class="badge badge-green">启用</span>' : '<span class="badge badge-gray">禁用</span>'}</td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-sm btn-warn" data-vid="${parseInt(v.id)}" data-vname="${esc(v.username)}" onclick="resetVisitorPasswordBtn(this)">${_lang==='en'?'Reset Pwd':'重置密码'}</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteVisitor(${parseInt(v.id)})">${_lang==='en'?'Delete':'删除'}</button>
+          <button class="btn btn-sm btn-warn" data-vid="${parseInt(v.id)}" data-vname="${esc(v.username)}" onclick="resetVisitorPasswordBtn(this)">重置密码</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteVisitor(${parseInt(v.id)})">删除</button>
         </td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -1744,10 +1511,10 @@ async function createVisitor() {
   const label = document.getElementById('visitor-label').value.trim();
   const username = document.getElementById('visitor-username').value.trim();
   const password = document.getElementById('visitor-password').value;
-  if (!username || !password) return toast(_lang==='en'?'Username and password required':'账号和密码不能为空', 'error');
+  if (!username || !password) return toast('账号和密码不能为空', 'error');
   const r = await api('POST', '/api/visitors', { label, username, password });
   const d = await r.json().catch(() => ({}));
-  toast(d.message || (r.ok ? (_lang==='en'?'Account created':'账号已创建') : (_lang==='en'?'Create failed':'创建失败')), r.ok ? 'success' : 'error');
+  toast(d.message || (r.ok ? '账号已创建' : '创建失败'), r.ok ? 'success' : 'error');
   if (r.ok) {
     document.getElementById('visitor-label').value = '';
     document.getElementById('visitor-username').value = '';
@@ -1757,9 +1524,9 @@ async function createVisitor() {
 }
 
 async function deleteVisitor(id) {
-  if (!confirm(_lang==='en'?'Delete this visitor account?':'确定删除该访客账号？')) return;
+  if (!confirm('确定删除该访客账号？')) return;
   const r = await api('DELETE', `/api/visitors/${id}`);
-  toast(r.ok ? (_lang==='en'?'Account deleted':'账号已删除') : (_lang==='en'?'Delete failed':'删除失败'), r.ok ? 'success' : 'error');
+  toast(r.ok ? '账号已删除' : '删除失败', r.ok ? 'success' : 'error');
   if (r.ok) loadVisitors();
 }
 
@@ -1770,12 +1537,12 @@ function resetVisitorPasswordBtn(btn) {
 }
 
 async function resetVisitorPassword(id, username) {
-  const newPwd = prompt(_lang==='en'?`Reset password for "${username}". Enter new password:`:`重置「${username}」的密码，请输入新密码：`);
+  const newPwd = prompt(`重置「${username}」的密码，请输入新密码：`);
   if (newPwd === null) return;
-  if (!newPwd.trim()) return toast(_lang==='en'?'Password cannot be empty':'密码不能为空', 'error');
+  if (!newPwd.trim()) return toast('密码不能为空', 'error');
   const r = await api('PUT', `/api/visitors/${id}/password`, { password: newPwd });
   const d = await r.json().catch(() => ({}));
-  toast(d.message || (r.ok ? (_lang==='en'?'Password reset':'密码已重置') : (_lang==='en'?'Reset failed':'重置失败')), r.ok ? 'success' : 'error');
+  toast(d.message || (r.ok ? '密码已重置' : '重置失败'), r.ok ? 'success' : 'error');
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────
@@ -1785,7 +1552,7 @@ function fmtDate(s) {
   const hasTz = /(?:Z|[+-]\d{2}:\d{2})$/.test(str);
   const d = new Date(hasTz ? str : (str + 'Z'));
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString(_lang === 'en' ? 'en-US' : 'zh-CN', { timeZone: 'Asia/Shanghai' });
+  return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
